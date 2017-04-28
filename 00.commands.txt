@@ -1,0 +1,483 @@
+
+FarmTestSt@ti0n
+
+RAV 6: sue old hw, CA, 10.120.165.60
+RAV20: sue old hw, 10.120.165.47
+
+#############################################################################################
+net use p: /d
+net use p: \\ubimelfs.aeroflex.corp\ubinetics\development\projects /PERSISTENT:YES
+
+python P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\tools\test_tool.py
+python \\ubimelfs.aeroflex.corp\UbiNetics\Development\Projects\AAS_TM500_LTE\User_Working_Folders\WangShouliang\tools\test_tool.py
+python X:\TM500\SLWang\00.test\tools\test_tool.py
+python E:\05.Tools\00.Test_Tool\test_tool.py
+
+##################### CUE #################
+
+hde -p C:\Projects\swang2_view_cue_8x8_int3_eq_control_merge -u C:\wang\modules\8x8\HDE "Cat_14.usf "Cat_14.usf "Cat_14.usf "Cat_14.usf
+hde -p C:\Projects\swang2_view_cue_8x8_int3_eq_control -u C:\wang\modules\8x8\HDE\41099 "usf "usf "usf "usf
+
+hde -p C:\Projects\swang2_view_cue_8x8_int -u C:\wang\modules\8x8\HDE "B1.usf "B1.usf "B1.usf "B1.usf
+hde -p C:\Projects\swang2_view_cue_8x8_int -u C:\wang\modules\8x8\HDE "r0.usf "r1.usf "r2.usf "r3.usf
+hde -p C:\Projects\swang2_view_cue_8x8_int2_priv_1 -u C:\wang\modules\8x8\HDE "r0.usf "r1.usf "r2.usf "r3.usf
+
+hde -p C:\Projects\swang2_view_cue_8x8_int3_eq_control_merge -u C:\wang\modules\8x8\HDE\41013 "usf "usf "usf "usf
+
+
+hde -p C:\Projects\swang2_view_cue_8x8_merge_to_tot_priv_1 -u C:\wang\modules\8x8\HDE\HDE_case\8x2\31859_TMA_Script_and_TV_Files "9.usf
+hde -p C:\Projects\swang2_view_cue_8x8_merge_to_tot_priv_1 -u C:\wang\modules\8x8\HDE\HDE_case\4x4\52848_TMA_Script_and_TV_Files "usf
+hde -p C:\Projects\swang2_view_cue_8x8_merge_to_tot_priv_1 -u C:\wang\modules\8x8\HDE\HDE_case\8x8\41013 "ant0.usf "ant0.usf "ant0.usf "ant0.usf
+hde -p C:\Projects\swang2_view_cue_8x8_merge_to_tot_priv_1 -u C:\wang\modules\8x8\HDE\41099 "usf "usf "usf "usf
+
+hde -p C:\Projects\swang2_view_cue_8x8_merge_to_tot_priv_1 -u C:\wang\modules\8x8\HDE\33639 "usf "usf "usf "usf
+
+hde -p C:\Projects\swang2_view_cue_8x8_int3_eq_control_xiaowei -u C:\wang\modules\8x8\HDE\HDE_case\8x8\41013 "ant0.usf "ant0.usf "ant0.usf "ant0.usf
+
+hde -p C:\Projects\swang2_view_cue_8x8_int -u C:\wang\modules\8x8\HDE\33639 "usf "usf "usf "usf
+
+hde_log -p C:\Projects\swang2_view_cue_8x8_merge_to_tot_priv_1 -o C:\wang\modules\8x8\logs -d 0.1
+hde_log -p C:\Projects\swang2_view_cue_8x8_int3_eq_control_xiaowei -o C:\wang\modules\8x8\logs -d 0.1
+
+hde_log -p C:\Projects\swang2_view_cue_8x8_int3_eq_control_merge -o C:\wang\modules\8x8\logs -d 0.4|2.2|2.1|3.1|8.1|9.1
+
+hde -p C:\Projects\swang2_view_cue_8x8_int3_eq_control_merge -u C:\wang\modules\8x8\HDE\41099 "usf "usf "usf "usf
+
+r */41001 -1 swang2_view_cue_8x8_int3_eq_control_ls2_8x8 -2 swang2_view_cue_8x8_int3_ls2_8x8 -s PFC12-8x8
+r */41001 -1 swang2_view_cue_8x8_int3_eq_control_ls2_8x8 -s PFC12-8x8
+r */41099 -1 swang2_view_cue_8x8_int3_eq_control_ls2_8x8 -s PFC12-8x8
+r */41099 -1 swang2_view2_cue_8x8_int3_priv_2_ls2_8x8 -s PFC12-8x8
+
+r */41013 -1 swang2_view_cue_8x8_merge_to_tot_priv_1_ls2_8x8 -s PFC12-8x8
+r */41013 -1 swang2_view_cue_8x8_int3_eq_control_merge_ls2_8x8 -s PFC12-8x8
+r */41002 -1 swang2_view_cue_8x8_int3_ls2_8x8 -s PFC12-8x8
+
+r */82913 -1 swang2_view_cue_8x8_int3_eq_control_merge_ls2_8x8 -s rav23-4x4 && cr -t
+
+r */41099 -1 swang2_view_cue_8x8_merge_to_tot_priv_1_ls2_8x8 -s rav23-8x81cc && cr -t -m
+
+r */41099 -1 swang2_view_cue_8x8_int3_eq_control_merge_ls2_8x8 -s PFC12-8x8   && cr -t
+r */41099 -1 swang2_view_cue_8x8_int3_eq_control_merge_memcpy_0_short_2_ls2_8x8 -s rav23-8x81cc   && cr -t
+r */41099 -1 swang2_view_cue_8x8_int3_ls2_8x8 -s rav23-8x81cc   && cr -t
+
+r */41099 -1 swang2_view_cue_8x8_int3_eq_control_merge_for_regression_ls2_8x8 -s PFC12-8x8 && cr -t
+r */41050 -1 swang2_view_cue_8x8_int3_priv_1_ls2_8x8 -s PFC12-8x8   && cr -t
+r */84005 -1 LTE-CUE-LS2-8x8merge_L1_17_03_20_07_43_41 && cr
+
+r */41099 -1 swang2_view_cue_8x8_int3_priv_1_ls2_8x8 -s rav23-8x81cc   && cr -m
+
+r */41099 -1 swang2_view_cue_8x8_int3_ls2_8x8 -s rav23-8x81cc   && cr -t
+
+r */36064 -1 swang2_view_cue_8x8_merge_to_tot_priv_1_ls2 -s PFC12-8x8 && cr -m
+
+r */8x8 -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 -s PFC12-8x8 && cr
+
+r */31887 -1 swang2_view_cue_8x8_code_review_lan_1_fix_int_ls2_4x4 -s PFC12-4x4  && cr
+
+r */41046 -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 -s rav23-8x82cc && cr
+r */85620 -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 -s PFC12-8x8 && cr
+r */82833 -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 -s PFC12-4x4 && cr
+
+r */33044 -1 swang2_view_cue_8x8_code_review_lan_1_ls2 && cr -m
+r */36060 -1 LTE-CUE-LS2_L1_17_03_31_13_57_57 && cr
+
+r */dci1a -1 swang2_view_cue_bugfix_2_ls2_8x8 -s pfc12-8x8 && cr
+r */dci1a -1 swang2_view_cue_8x8_checkin_1_ls2_8x8 -s pfc12-8x8 && cr -m
+
+r */41044 -1  LTE-CUE-LS28X8-LMV_17_04_21_18_19_50 -s pfc12-8x8 && cr
+r */41044 -1  LTE-CUE-LS28X8_17_04_21_16_01_03 -s pfc12-8x8 && cr
+r */41044 -1  LTE-CUE-LS28X8_17_04_21_03_26_44 -s pfc12-8x8 && cr
+r */41044 -1  LTE-CUE-LS28X8_17_04_20_10_10_15 -s pfc12-8x8 && cr
+
+r */90309 -1 LTE-SUE-4X2-LSA-MKI_L1_17_01_19_17_28_30 && cr
+
+r */34941 -1 LTE-MUE-C0309-LDC_L1_17_04_25_03_54_00 && cr -m
+
+r */34358 -1 swang2_view_sue_tot_obs_1_4x2 && cr
+bat batch_sue_4x2_fdd.bat -1 swang2_view_sue_tot_obs_1_4x2 && cr
+
+glog -p C:\wang\modules\8x8\logs -z "dat$ && extract -p C:\wang\modules\8x8\logs -z "dsp.txt -d 0.3|0.4|1.2 -x 0
+
+bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_bugfix_2_ls2_8x8 -s PFC12-8x8
+
+bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_8x8_int3_eq_control_merge_ls2_8x8 -s rav23-8x81cc
+bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_8x8_merge_to_tot_priv_1_ls2_8x8 -s rav23-8x81cc
+
+bat batch_cue_4x4_tdd_in_8x8.bat -1 swang2_view_cue_8x8_int3_eq_control_merge_ls2_4x4 -s rav23-4x4
+bat batch_cue_ls2_tdd_in_8x8.bat -1 swang2_view_cue_8x8_merge_to_tot_priv_1_ls2
+
+bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_8x8_checkin_1_ls2_8x8 -s PFC12-8x8
+bat batch_cue_4x4_tdd_in_8x8.bat -1 swang2_view_cue_8x8_code_review_lan_1_ls2_4x4 -s PFC12-4x4
+bat batch_cue_ls2_tdd_in_8x8.bat -1 swang2_view_cue_8x8_code_review_lan_1_ls2
+
+bat batch_cue_4x4_sanity.bat -1 swang2_view_cue_tot_ls2_4x4 -s PFC12-4x4
+
+r test\debug\cue\8x8\batch_mimo8x8_CUE_NAS_TDD.txt -1 swang2_view_cue_8x8_int_ls2_8x8_int -s PFC12-8x8
+r test\debug\cue\8x8\batch_8x8_CUE_PDCP_TDD.txt -1 swang2_view_cue_8x8_int3_eq_control_ls2_8x8 -s PFC12-8x8
+r test\debug\cue\8x8\batch_mimo8x8_CUE_NAS_TDD.txt -1 lei_0824 -s RAV64-8x8
+
+r test\debug\cue\8x8\youzhen\batch_8x8_CUE_PDCP_TDD.txt -1 swang2_view_cue_8x8_int_ls2_8x8 -s PFC12-8x8
+r test\debug\cue\8x8\youzhen\batch_8x8_CUE_PDCP_TDD_test.txt -1 swang2_view_cue_8x8_int_ls2_8x8 -s PFC12-8x8
+r test\debug\cue\8x8\youzhen\test\batch_8x8_CUE_PDCP_TDD_test.txt -1 swang2_view_cue_8x8_int_ls2_8x8 -s PFC12-8x8
+r test\debug\cue\8x8\youzhen\batch_mimo8x8_CUE_NAS_TDD.txt -1 swang2_view_cue_8x8_int_ls2_8x8 -s PFC12-8x8
+
+r test\debug\cue\8x8\youzhen\batch_8x8_CUE_PDCP_TDD_TMA_jun.txt -1 swang2_view_cue_8x8_int_ls2_8x8 -s PFC12-8x8
+
+cc -p P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\debug\cue\8x8 -v aiq none
+
+r test\debug\cue\8x8\batch_mimo8x8_CUE_NAS_TDD.txt -1 LTE-CUE-LS2-4X4_L1_16_09_01_15_48_10 -s PFC12-4x4
+r */8x8 -1 swang2_view_cue_8x8_int3_eq_control_ls2_8x8 -s PFC12-8x8
+r */8x8 -1 swang2_view_cue_8x8_int2_ls2_8x8 -s PFC12-8x8
+bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_8x8_int2_ls2_8x8 -s PFC12-8x8
+
+r */4x4 -1 LTE-CUE-LS28X8_int_16_10_21_19_00 -s PFC12-4x4
+r */8x4 -1 swang2_view_cue_8x8_int2_priv_1_ls2_8x8 -s PFC12-4x4
+
+r test\debug\cue\8x8\41060 -1 swang2_view_cue_8x8_int2_ls2_8x8  -s PFC12-8x8
+
+cr -s c:\auto_test\temp\Run1-regression-0928-0231  -a
+cr -f 01-50-07.*.txt -s c:\auto_test\temp\Run1-regression-0928-0231  -a
+
+cr -s c:\temp\Run1-8x8-41012-50times-no-log -a
+cr -s c:\temp\Run1-8x8-41012-50times-with-log -a
+
+cr -s c:\auto_test\temp\Run1_bak_201610110021_regression  -a
+a -r C:\AUTO_TEST\TEMP\Run1_bak_201610110021_regression P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result
+a -r C:\AUTO_TEST\TEMP\Run1-1012-0812-regression-test P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\regression
+
+cr -s C:\AUTO_TEST\TEMP\Run1-regression-1019 -a
+a -r C:\AUTO_TEST\TEMP\Run1-regression-1019 P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\regression\Run1-regression-1019.txt
+
+python P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\tools\test_tool.py
+a -r C:\temp\Run1-8x8-reg  P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\regression\run1_PFC12_161024.txt
+cr -s C:\temp\Run1-8x8-reg  -a
+a -r C:\temp\run1-8x8-50times-1023  P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\regression\run1_PFC12_161024_50times.txt
+
+cr -s C:\AUTO_TEST\TEMP\Run1_1017_regression  -a
+cr -s C:\AUTO_TEST\TEMP\Run1_1017_regression -f 16-09-28.*.txt -a
+
+a -r P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\run1_PFC12_161014  P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\regression\run1_PFC12_161014
+a -r P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\run1_PFC12_161019 P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\regression\run1_PFC12_161019.txt
+cr -s C:\AUTO_TEST\TEMP\Run1-1014-regression-test -a
+bat -1 swang2_view_cue_lme_6_2_0_bugfix_ls2 batch_cue_8x8_tdd_nas -s PFC12-8x8
+
+cr -s C:\AUTO_TEST\TEMP\Run1-1014-regression-test -f @SLOG.*13-58-04 -a
+
+cr -s C:\AUTO_TEST\TEMP\Run1_regression_20161019 -a
+
+cr -s C:\AUTO_TEST\TEMP\Run1_1016_41004_regression -f @SLOG.*15-13-29 -a
+cr -s C:\AUTO_TEST\TEMP\Run1_1016_41004_regression -f @SLOG.*15-21-41 -a
+cr -s C:\AUTO_TEST\TEMP\Run1_1016_41004_regression -f @SLOG.*16-20-05 -a
+cr -s C:\AUTO_TEST\TEMP\Run1_1016_41004_regression -f @SLOG.*16-45-46 -a
+
+VsDebugHelper.writemem  C:\wang\modules\8x8\logs\test\a.raw &s_aSym[SymIdx].pDataSym[0] 20
+
+hde_log -p C:\Projects\swang2_view_cue_8x8_int_priv_2 -o C:\wang\modules\8x8\logs -d 0.4|2.2|2.3|3.2|3.3|8.2|8.3|9.2|9.3
+hde_log -p C:\Projects\swang2_view_cue_8x8_merge_to_tot_priv_1 -o C:\wang\modules\8x8\logs -d 0.4|0.1|2.2|1.2
+
+
+###################
+Load test - 3CC 4x4 TM9 256QAM OMM, 1000 Ues - 32 Fast Fading UEs and remaining AWGN UEs - is still asserting. Looks like a MIPs issue to me.
+Unfortunately, this is a 3CC ABB test and can be run only on RAV42,64 and 35 as below:
+ttm_runner.py "batch_name.txt" -s RAVxx-2244
+
+r temp\x51554_NAS_1000UE_TM4_9_9_OMM\batch_CA_CUE_NAS_3CC_4x4_aru.txt -1 swang2_view_cue_tot_for_ubi_ls2_4x4 -s RAV35-2244
+r temp\x51554_NAS_1000UE_TM4_9_9_OMM\batch_CA_CUE_NAS_3CC_4x4_test.txt -1 swang2_view_cue_tot_for_ubi_ls2_4x4 -s RAV35-2244
+
+cc -v "aiq -p test\debug\cue\8x8 none
+r -1 swang2_view_cue_8x8_int_ls2_8x8 test\debug\cue\8x8\@^batch -s RAV53-8x8
+
+spl la_log_20160225-02-22-05.*.txt -r -l 1|2
+spl la_log_.*DSP_[014]_\d+.txt -r
+spl la_log_.*DSP_2_2.txt -r -l
+
+LOG_DSP_MODULE_LIST = [UL Ctrl Master, UL Ctrl Slave, UL SRP 0, PUCCH SRP, PUSCH BRP, PUCCH BRP]
+LOG_DSP_MODULE_LIST = [UL Ctrl Master, UL CQI, PDCCH CTRL 0/BRP 0, Mobility Model 0, PUSCH BRP]
+LOG_DSP_MODULE_LIST = [UL Ctrl Master, UL CQI, PDCCH CTRL 0/BRP 0, Mobility Model 0, PUSCH BRP]
+LOG_DSP_MODULE_LIST = [PDCCH BRP 0, DL SRP Meas/CQI/Radio, PDSCH CTRL 0, PDSCH BRP 0]
+LOG_DSP_MODULE_LIST = [PDCCH BRP 0, PDSCH CTRL 0, PDSCH BRP 0]
+
+r */3cc -1 swang2_view_cue_4x4_256QAM_4d_int_ls2_4x4 -s rav42-4x43cc
+
+bat -1 swang2_view_cue_lme_6_2_0_bugfix_ls2 batch_cue_ls2_fdd_CA.bat -s RAV42-CA
+bat -1 swang2_view_cue_tot_ls2 batch_cue_ls2_fdd_CA.bat -s PFC17-CA
+bat -1 swang2_view_cue_harm_comments_1_ls2 batch_cue_ls2_fdd_CA.bat -s PFC17-CA
+
+bat -1 LTE-CUE-LS2-4X4_L1_16_09_01_15_48_10 batch_cue_ls2_4x4_fdd.bat -s PFC12-4x4
+bat -1 LTE-CUE-LS2_L1_16_09_01_15_48_17 batch_cue_basic_fdd.bat
+
+r -1 swang2_view_cue_scma_0_ls2 test\debug\cue\scma\@^batch.*.txt -u
+r -1 swang2_view_cue_scma_bugfix_1ue_ls2 test\debug\cue\scma\@^batch.*.txt -u
+cr -f \.pxi && spl DSP_4_[023].txt -r && spl DSP_5_[01].txt -r
+cr -f \.pxi && spl DSP_5_[01].txt -r
+spl 20160222-07-56-30_DSP_(4_2|5_0) -r -l
+
+
+cc -p P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\ubi\ubi105076\ubi105076_HO_same_NDI_DRX\Vectors -v @aiq none
+r -1 swang2_view_cue_tot_priv_1_ls2 ubi\ubi105076\ubi105076_HO_same_NDI_DRX\@batch.*.txt -u
+r -1 swang2_view_cue_tot_priv_1_ls2 ubi\ubi105076\ubi105076_HO_same_NDI_DRX\@batch.*.txt -u -s RAV52-1HO -0 -e
+
+######################### MUE #######################
+batch_MUE_NAS_HO_TDD_ari_mod_test.txt
+C:\Python26\Scripts\pyro-ns.cmd
+ttm_runner.py batch_MUE_NAS_HO_TDD_ari_mod_test.txt -s RAV20-HO
+ttm_runner.py batch_MUE_NAS_HO_TDD_ari_mod_test.txt -s RAV21-HO
+
+r */mue_bler -1 swang2_view_mue_ari_debug_1_2x2_split_dl_ca -f
+r */mue_bler -1 swang2_view_mue_bugfix_v3010_s337_2x2 -f
+
+spl la_log_.*DSP_[249]_0.txt -r
+
+r */mue -1 LTE-MUE-C0309-LDC_L1_16_03_29_16_41_06
+
+r */mbler -1 swang2_view_mue_ari_debug_1_2x2_split_dl_ca
+r */m -1 LDE_1_3_0_REV04
+r */m -1 swang2_view_mue_tot_bugfix_1_mue2
+
+r -1 swang2_view_mue_bugfix_v309_s336_2_2x2_fdd ubi\ubi94563\@^aTest.*.txt
+r -1 swang2_view_mue_tot_2x2_fdd ubi\ubi94563\@^aTest.*.txt
+
+bat -1 swang2_view_mue_bugfix_v309_s336_2_2x2_fdd batch_mue_8c_fdd.bat
+bat -1 LTE-MUE-C0309_NEWHW_L1_15_03_03_18_14_49 batch_mue_mue2_fdd.bat
+
+bat -1 swang2_view_mue_tot_cluster_pusch_2_2x2_split_dl_fdd batch_mue_5c_fdd.bat
+bat -1 swang2_view_ari_mue_tot_cluster_pusch_1_2x2_fdd batch_mue_8c_fdd.bat
+bat -1 swang2_view_mue_ari_cluster_2_2x2_split_dl_ca batch_mue_8c_fdd.bat
+bat -1 swang2_view_mue_tot_bugfix_1_2x2 batch_mue_8c_tdd.bat
+bat -1 LTE-MUE-C0309_TDD_5C_L1_15_10_12_16_07_22  batch_mue_5c_tdd.bat -r nas
+
+bat -1 swang2_view_mue_ari_cluster_2_2x2_split_dl_ca batch_mue_tdd_CA_ari_mod.bat
+bat -1 swang2_view_mue_ari_cluster_2_2x2_split_dl_ca batch_mue_tdd_ho_ari_mod.bat
+
+bat -1 swang2_view_mue_tot_2x2_split_dl_ca batch_mue_tdd_ari_mod.bat
+bat -1 swang2_view_mue_ari_cluster_2_mue2 batch_mue_tdd_ari_mod.bat
+
+cc -p P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\debug\mue\cluster_pusch_3\PUSCH\TV -v @aiq none
+cc -p P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\debug\mue\cluster_pusch_3\PUSCH\basic @txt
+cc -p P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\debug\mue\cluster_pusch_3\PUSCH\script @txt
+r -1 swang2_view_mue_ari_cluster_2_2x2_split_dl_ca test\debug\mue\cluster_pusch_3\PUSCH\batch\@aTest_.*.txt
+
+# cluster pusch based on ARI MUE branch
+r -1 swang2_view_ari_mue_tot_cluster_pusch_1_2x2_split_dl_ca_fdd test\debug\mue\cluster_pusch_3\PUSCH\batch\@^aTest.*TDD.*.txt
+r -1 swang2_view_ari_mue_tot_cluster_pusch_1_2x2_split_dl_ca_fdd test\debug\mue\cluster_pusch_3\PUSCH\batch\@^aTest.*CUE.*.txt
+# cluster pusch based on MUE TOT
+r -1 swang2_view_mue_tot_cluster_pusch_2_2x2_fdd test\debug\mue\cluster_pusch_3\PUSCH\batch\@^aTest.*CUE.*.txt
+# aricent MUE branch
+r -1 swang2_view_mue_ari_tot_2x2_split_dl_ca_fdd test\debug\mue\cluster_pusch_3\PUSCH\batch\@^aTest.*CUE.*.txt
+
+r -1 swang2_view_cue_tot_extmue test\debug\cue\temp\@^aTest.*.txt -f -a
+
+r -1 swang2_view_cue_lme36x_rel_ls2 test\debug\cue\ack\@^aTest.*.txt
+r -1 swang2_view_mue_tot_for_ubi_MUE2_FDD test\temp\@^aTest.*.txt
+r -1 LTE-MUE-C0309_L1_05_00_00_REV50 test\temp\@^aTest.*.txt
+
+r -1 LTE-MUE-C0309_TDD_L1_S_05_00_00_REV58 ubi\ubi95798\@^aTest.*.txt
+r -1 swang2_view_mue_new_hw_bugfix_mue2_tdd ubi\ubi95798\@^aTest.*.txt
+
+r -1 LTE-MUE-C0309_TDD-NEWHW_L1_14_11_28_11_41_45 test\temp\@^aTest.*SPS.*.txt
+r -1 LTE-MUE-C0309_TDD_L1_S_05_00_00_REV58 test\temp\3\@^aTest.*.txt
+
+r -1 swang2_view_cue_tfdd_phase3_int_2_ls2 test\debug\cue\pucch3\@^00_aTest.*.txt  -s PFC17-CA
+r -1 LTE-CUE-LS2-FTDD-CA_L1_15_01_08_18_10_34 test\debug\cue\pucch3\@^00_aTest.*.txt  -s PFC17-CA
+
+r -1 swang2_view_cue_tfdd_phase3_int_2_ls2 test\debug\cue\tfdd_ca_1\@^batch.*.txt -s PFC10-CA
+
+g P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\debug\mue\cluster_pusch\fail_1.txt
+r -1 swang2_view_mue_tot_cluster_pusch_2_2x2_fdd test\debug\mue\cluster_pusch
+r -1 swang2_view_mue_tot_bugfix_1_2x2_fdd test\debug\mue\cluster_pusch\@aTest_.*_03.txt
+
+r -1 swang2_view_ari_mue_tot_cluster_pusch_1_2x2_split_dl_ca_fdd test\debug\mue\60446
+r -1 swang2_view_mue_tot_for_ubi_2x2_split_dl_tdd test\debug\mue\60446
+cc -p P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\debug\mue\60446 -v "aiq none
+
+######################### SUE ##################
+modify_batch -r on C:\AUTO_TEST\Testing\batch\"txt$
+
+r -1 swang2_view_sue_lsa100_lsa200_bugfix_4x2 ubi\ubi107115\case
+r */mbms -1 swang2_view_sue_lsa100_lsa200_bugfix_4x2
+
+bat -1 swang2_view_sue_bugfix_2x2 test\batch\batch_sue_fdd_basic.bat
+bat -1 swang2_view_sue_tot_obs_1_4x2 test\batch\batch_sue_tdd_basic_old.bat
+bat -1 swang2_view_sue_tfdd_common_2_SUE2 test\batch\batch_sue_fdd_basic.bat
+bat -1 swang2_view_sue_tot_ubi_1_4x2_ulmimo_tdd test\batch\batch_sue_tdd_basic.bat
+
+bat -1 swang2_view_sue_bugfix_4x2 test\batch\batch_sue_tdd_basic.bat
+
+bat -1 swang2_view_sue_4x4_ota_int_SUE2_4X4_tdd test\batch\batch_sue_tdd_ulmimo.bat
+bat -1 swang2_view_sue_4x4_ota_int_SUE2_4X4_tdd test\batch\batch_sue_4x4_tdd.bat
+
+r -1 swang2_view_sue_4x4_ota_int_SUE2_4X4_tdd test\debug\sue\crash\@^aTest.*NAS.*.txt
+r -1 swang2_view_sue_bugfix_2x2_fdd  test\debug\sue\ubi\@^aTest.*.txt
+r test\debug\sue\temp\@^aTest.*.txt
+
+rslt C:\Users\wang\run1_9 -t
+rslt P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\test\run_result\run1_sue_ulmimo_1 -t
+
+r * -1 swang2_view_sue_bugfix_after_1_4x2 -2 swang2_view_sue_bugfix_after_2_4x2 -3 swang2_view_sue_bugfix_before_4x2
+r */once -1 LTE-SUE-4X2-LSA-MKI_L1_15_07_10_16_17_01
+
+r test\debug\sue\ubi -1 LTE-SUE-4X2-LSA_L1_02_00_00_REV50 -f -e
+r test\debug\sue\ubi -1 swang2_view_sue_tot_ubi_1_4x2
+r test\debug\sue\ubi1 -1 swang2_view_sue_tot_ubi_1_2x2 -u
+####################### gen batch #####################################
+g * -c 40095 && r * -1 swang2_view_sue_tfdd_common_2_2x2
+
+r * -1 LTE-SUE-C0309_2X2_L1_15_05_01_17_35_58
+
+########################### ubi ##################################
+python P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\tools\test_tool.py
+ubi 98472 -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\temp
+
+cd P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\script
+h2s -v file://stv-nas/LTE_Results_Builds/Release_Candidates/LTE/TDD/SUE/LTE-SUE-C0309_TDD_NX4_L1_K_08_00_05_REV01/Results/RAV31_15_04_18_04_05/90109_HARQ_20MHz_UL_MIMO_PUCCH_PerSRS_TDD_Cfg_1_7_20150418-05-25-12.html
+
+python ttm_runner.py batch_4X4_PDCP_SUE_CUE.txt -s sho_rav01-CA4X4
+env mue fdd -f swang2_view_mue_v309_1_2x2_fdd
+env mue tdd -f swang2_view_mue_ul_harm_dev_int2_2x2_TDD
+
+copy_case -v -p ubi\ubi88577 @\d{5}.*.txt$
+
+################################ rav bin ############################
+ravbin -1 swang2_view_mue_tot_for_ubi_2x2_split_dl_ca   LTE-MUE-C0309-LDC_L1_16_06_13_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+ravbin -1 swang2_view_mue_ari_cluster_2_mue2 LTE-MUE-C0309-LDE_L1_15_11_24_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+ravbin -1 swang2_view_sue_tot_ubi_1_4x2_ulmimo_fdd   LTE-SUE-C0309_FDD_4X2_L1_15_01_20_Shouliang_ULMIMO
+ravbin -1 swang2_view_mue_tot_2x2_split_dl_ca LTE-MUE-C0309-LDC_L1_15_12_18_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_mue_ul_harm_priv_4_2x2_FDD -2 swang2_view_mue_ul_harm_priv_4_2x2_TDD   LTE-MUE-8C_L1_14_10_13_FDD_Shouliang LTE-MUE-8C_L1_14_10_13_TDD_Shouliang
+ravbin -1 swang2_view_mue_ul_harm_priv_4_2x2_split_dl_FDD -2 swang2_view_mue_ul_harm_priv_4_2x2_split_dl_TDD   LTE-MUE-5C_L1_14_10_13_FDD_Shouliang LTE-MUE-5C_L1_14_10_13_TDD_Shouliang
+ravbin -1 swang2_view_mue_ul_harm_priv_4_MUE2_FDD -2 swang2_view_mue_ul_harm_priv_4_MUE2_TDD   LTE-MUE-MUE2_L1_14_10_13_FDD_Shouliang LTE-MUE-MUE2_L1_14_10_13_TDD_Shouliang
+
+ravbin -1 swang2_view_cue_tot_for_ubi_ls2_4x4  LTE-CUE-LS24x4_L1_16_06_22_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+ravbin -1 swang2_view_cue_ul_harm_priv_1_eicic_loadsys_split_dl   LTE-CUE-7C_L1_14_10_20_Shouliang
+ravbin -1 swang2_view_cue_harm_comments_1_ls2   LTE-CUE-LS2_L1_15_02_27_Shouliang
+ravbin -1 swang2_view_sue_lsa100_lsa200_bugfix_4x2   LTE-SUE-4X2-LSA-MKI_L1_16_05_16_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_sue_tot_tma_tfdd_common_1_4x2  LTE-SUE-C0309_4X2_L1_15_04_15_Shouliang
+ravbin -1 swang2_view_sue_tfdd_common_2_4x2 LTE-SUE-C0309_4X2_L1_15_05_08_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+ravbin -1 swang2_view_sue_tfdd_common_2_2x2 LTE-SUE-C0309_2X2_L1_15_05_08_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_sue_tot_obs_1_2x2 LTE-SUE-2X2-LSA-MKI_L1_15_12_17_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_cue_tot_cluster_pusch_2_extmue LTE-CUE-5C_L1_15_07_17_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+ravbin -1 swang2_view_cue_tot_cluster_pusch_2_loadsys_split_dl LTE-CUE-7C_L1_15_07_17_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_ari_mue_tot_cluster_pusch_1_2x2_split_dl_ca_fdd LTE-MUE-LDC_L1_15_08_17_FDD_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_cue_tot_for_ubi_ls2 LTE-CUE-LS2_L1_15_12_08_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_cue_8x8_merge_to_tot_priv_1_ls2_4x4 LTE-CUE-LS24X4-8x8_MERGE_TO_TOT_L1_17_03_22_07_20_24_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+ravbin -1  swang2_view_cue_8x8_merge_to_tot_priv_1_ls2 LTE-CUE-LS2-8x8merge_L1_17_03_23_10_10_41_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_cue_8x8_code_review_lan_1_ls2 LTE-CUE-LS2-8x8review_L1_17_03_29_09_10_41 -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+ravbin -1 swang2_view_cue_8x8_code_review_lan_1_ls2_4x4 LTE-CUE-LS24X4-8x8review_L1_17_03_29_09_10_41 -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+ravbin -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 LTE-CUE-LS28X8-8x8review_L1_17_03_29_09_10_41 -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+# generate batch
+ravbatch -p mue_5c_tdd test\batch\batch_mue_5c_tdd.bat && ravbatch -p mue_8c_tdd test\batch\batch_mue_8c_tdd.bat && ravbatch -p mue_5c_fdd test\batch\mue\batch_mue_5c_fdd.bat && ravbatch -p mue_8c_fdd test\batch\mue\batch_mue_8c_fdd.bat
+ravbatch -p mue_5c_tdd test\batch\batch_mue_5c_tdd.bat
+ravbatch -p mue_8c_tdd test\batch\batch_mue_8c_tdd.bat
+ravbatch -p mue_5c_fdd test\batch\batch_mue_5c_fdd.bat
+ravbatch -p mue_8c_fdd test\batch\batch_mue_8c_fdd.bat
+ravbatch -p mue_hw_fdd test\batch\batch_mue_mue2_fdd.bat
+ravbatch -p mue_hw_tdd test\batch\batch_mue_mue2_tdd.bat
+ravbatch -p mue_tdd_ho test\batch\batch_mue_tdd_ho_ari_mod.bat -x ^(?!.*ari_mod).*.txt
+ravbatch -p mue_tdd test\batch\batch_mue_tdd_ari_mod.bat -x ^(?!.*ari_mod).*.txt
+ravbatch -p mue_fdd test\batch\batch_mue_fdd_ari_mod.bat -x stability|batch_sue_mue_harq_3gpp_02.txt
+ravbatch test\batch\batch_mue_fdd_ari_mod.bat -r \\stv-nas\LTE_Results_Builds\Release_Candidates\LTE\FDD\MUE\LTE-MUE-C0309_NEWHW_L1_15_11_11_18_21_35\Results\RAV18_15_11_11_18_44
+
+ravbatch -p cue_5c_fdd test\batch\batch_cue_5c_fdd.bat -x stability|batch_EXT_MUE_PDCP_External_Hand_Over
+ravbatch -p cue_7c_fdd test\batch\batch_cue_7c_fdd.bat -x stability|batch_EXT_MUE_PDCP_External_Hand_Over
+ravbatch -p cue_5c_tdd test\batch\batch_cue_5c_tdd.bat -x stability|batch_normal_rlc_3gpp_tdd_1
+ravbatch -p cue_7c_tdd test\batch\batch_cue_7c_tdd.bat -x stability|batch_normal_rlc_3gpp_tdd_1
+ravbatch -p cue_ls2_fdd test\batch\batch_cue_ls2_fdd.bat -x stability|batch_EXT_MUE_PDCP_External_Hand_Over|batch_MTS_2Cells
+ravbatch -p cue_ls2_tdd test\batch\batch_cue_ls2_tdd.bat -x stability
+ravbatch -p cue_ls2dl_fdd test\batch\batch_cue_ls2dl_fdd.bat -x stability|batch_EXT_MUE_PDCP_External_Hand_Over
+ravbatch -p cue_ls2dl_tdd test\batch\batch_cue_ls2dl_tdd.bat -x stability|batch_EXT_MUE_PDCP_External_Hand_Over|batch_SUE_NAS_3GPP_TDD$|batch_MTS_1Cell|fdd
+ravbatch -p cue_ls2_fdd_ho test\batch\temp\batch_cue_ls2_fdd_ho.bat
+ravbatch -p cue_ls2_tdd_ho test\batch\temp\batch_cue_ls2_tdd_ho.bat
+
+ravbatch -p sue_4x2_fdd test\batch\batch_sue_4x2_fdd_raw.bat -x stability|ari_mod|batch_normal_mue_harq_3gpp$|batch_normal_mue_pdcp_3gpp$|batch_sue_mue_harq_3gpp$
+ravbatch -p sue_2x2_fdd test\batch\batch_sue_2x2_fdd_raw.bat -x stability|ari_mod|batch_normal_mue_harq_3gpp$|batch_normal_mue_pdcp_3gpp$|batch_sue_mue_harq_3gpp$
+ravbatch -p sue_sue2_fdd test\batch\batch_sue_sue2_fdd.bat
+ravbatch -p sue_4x2_tdd test\batch\batch_sue_4x2_tdd_raw.bat
+ravbatch -p sue_2x2_tdd test\batch\batch_sue_2x2_tdd.bat
+ravbatch -p sue_sue2_tdd test\batch\batch_sue_sue2_tdd.bat
+
+load_bin swang2_view_mue_harm_dev_int2_2x2_FDD \\10.120.163.104\auto_test\Boot
+
+\\10.120.163.114\auto_test\TEMP\
+
+
+spl -s 20 C:\AUTO_TEST\TEMP\log\@^la_log_.*txt$
+spl -s 20 C:\AUTO_TEST\TEMP\log\@^la_log_20140422-07-02-39.*txt$
+spl -s 20 C:\AUTO_TEST\TEMP\RUN1_w_tpc_0325\log\la_log_.*_57(52|66).txt
+spl -s 20 \\10.120.163.105\auto_test\TEMP\Run1\log\@^la_log_.*txt$
+spl -s 20 \\10.120.163.104\auto_test\TEMP\RUN1\log\log\@^la_log_.*txt$
+
+
+hde_log -p E:\cc_projects\local\swang2_view_mue_ul_harm_int -o E:\02.Work\10.Debug\89307\log -d 2|11
+hde_log -p E:\cc_projects\swang2_mue_tot -o E:\02.Work\10.Debug\86270\tot -d 16
+hde_log -k
+
+nm6x -n C:\Projects\swang2_view_mue_harm_dev_int3\tm_build_system\build\ftp\cpu12.out > C:\wang\cpu12_symbols.txt
+
+#########################################################################################################################
+hde_log -p E:\cc_projects\swang2_view2_cue_tot_ca_3cc -o E:\02.Work\06.Test\36069\CUE_pucch_ca_3cc -d 13|16
+
+hde_log -p C:\Projects\swang2_view_cue_8x8_int -o C:\wang\modules\8x8\logs -d 0.4|2.2|2.3
+hde_log -p C:\Projects\swang2_view_cue_8x8_int_priv_1 -o C:\wang\modules\8x8\logs -d 0.1|0.2|0.3|0.6|0.7|1.1|1.4|1.5|1.6|1.7
+hde_log -p C:\Projects\swang2_view_cue_8x8_int_priv_1 -o C:\wang\modules\8x8\logs -d 7.1|7.4|7.5|7.6|7.7
+hde_log -p C:\Projects\swang2_view_cue_8x8_int_priv_1 -o C:\wang\modules\8x8\logs -d 2.1|2.4|2.5|3.1|3.4|3.5|8.1|8.4|8.5|9.1|9.4|9.5
+
+hde_log -p E:\cc_projects\swang2_view2_cue_tot_ca_3cc -o E:\02.Work\06.Test\36065\CUE_pucch_ca_3cc -d 13|16
+
+hde_log -p E:\cc_projects\swang2_view2_cue_tot_ca_3cc -o E:\02.Work\06.Test\36151\CUE_pucch_ca_3cc -d 13|16
+
+hde_log -p E:\cc_projects\swang2_view2_cue_tot_debug_temp -o E:\02.Work\06.Test\36065\CUE_pucch_ca_3cc -d 13|16
+
+hde_log -p E:\cc_projects\swang2_view2_cue_tot_debug_temp -o E:\02.Work\06.Test\36151\CUE_pucch_ca_3cc -d 13|16
+
+hde_log -k
+
+retrieve_log -p LOG_UL_SRP_PUCCH_FSM_TX_BOTH(TtiCtrl:%%%d -s 9260|8570 E:\02.Work\06.Test\36069\CUE_pucch_ca_3cc\swang2_view2_cue_tot_debug_temp_log_dsp16.txt E:\02.Work\06.Test\36069\CUE_pucch_ca_3cc\swang2_view2_cue_tot_ca_3cc_log_dsp16.txt
+
+retrieve_log -p LOG_UL_SRP_PUCCH_FSM_TX_BOTH(TtiCtrl:%%%d -s 430|430|430 E:\02.Work\06.Test\36065\CUE_pucch_ca_3cc\^hde_log_.*_dsp16_.*.txt
+
+retrieve_log -p LOG_UL_SRP_PUCCH_FSM_TX_BOTH(TtiCtrl:%%%d -s 430 E:\02.Work\06.Test\36065\CUE_pucch_ca_3cc\^hde_log_swang2_view2_cue_tot_ca_3cc_dsp16_140118_013026.txt
+
+retrieve_log -p LOG_UL_SRP_PUCCH_FSM_TX_BOTH(TtiCtrl:%%%d -s 180|170 E:\02.Work\06.Test\36065\CUE_pucch_ca_3cc\^hde_log_.*_dsp16_.*.txt
+
+retrieve_log -e 100 -p LOG_UL_SRP_PUCCH_FSM_TX_BOTH(TtiCtrl:%%%d -s 503|263 E:\02.Work\06.Test\36151\CUE_pucch_ca_3cc\^hde_log_.*_dsp16_.*.txt
+
+retrieve_log -p LOG_UL_SRP_PUCCH_FSM_TX_BOTH(TtiCtrl:%%%d -s 570 E:\02.Work\06.Test\36151\CUE_pucch_ca_3cc\^hde_log_swang2_view2_cue_tot_ca_3cc_dsp16_140118_024425.txt
+
+retrieve_log -p LOG_UL_SRP_PUCCH_FSM_TX_BOTH(TtiCtrl:%%%d -s 8350 E:\02.Work\06.Test\36069\CUE_pucch_ca_3cc\^hde_log_swang2_view2_cue_tot_ca_3cc_dsp16_140118_112659.txt$
+
+retrieve_log -p LOG_UL_SRP_PUCCH_FSM_TX_BOTH(TtiCtrl:%%%d -s 120 E:\02.Work\06.Test\36065\CUE_pucch_ca_3cc\^hde_log_swang2_view2_cue_tot_ca_3cc_dsp16_140118_121739.txt
+
+#########################################################################################################################
+
+LOGANALYSE -i127.0.0.1:(5750+dspNo)>log.txt
+
+LOGANALYSE -i127.0.0.1:5755>E:\02.Work\log5.txt
+
+LOGANALYSE -i127.0.0.1:5766>E:\02.Work\log16.txt
+
+LOGANALYSE -i127.0.0.1:5767>E:\02.Work\log17.txt
+
+LOGANALYSE -i127.0.0.1:5768>E:\02.Work\log18.txt
+
+socket_log 127.0.0.1 5001 -f log_output -s 1 -w 2
+
+[Product letters]
+Ft            CUE 5C tot
+Ftx          - CUE 7C tot
+Ft1           CUE LMC 5C tot
+Ftx1          CUE LMC 7C tot
+C            - SUE
+M            - MUE
+[drive letters]
+M  CUE FDD, Z   CUE TDD, N   SUE FDD, K   SUE TDD, G   MUE FDD, S   MUE TDD
+
+
+
