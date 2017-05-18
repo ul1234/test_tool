@@ -93,6 +93,16 @@ r */90309 -1 LTE-SUE-4X2-LSA-MKI_L1_17_01_19_17_28_30 && cr
 
 r */34941 -1 LTE-MUE-C0309-LDC_L1_17_04_25_03_54_00 && cr -m
 
+r */34941 -1 LTE-MUE-C0309-LDE_L1_17_05_04_04_57_05 && cr -m
+
+r */34941 -1 swang2_view_mue_tot_for_ubi_2x2_split_dl_ca && cr
+
+r */37830 -1 LTE-CUE-LS24X4_17_04_27_17_08_39 -s pfc12-4x4 && cr
+r */37830 -1 swang2_view_cue_tot_priv_1_ls2_4x4 -s pfc12-4x4 && cr
+r */37830 -1 LTE-CUE-ABB-LS24X4_17_05_08_16_42_12 -s rav58-4x4 && cr
+r */37830 -1 swang2_view_cue_tot_priv_master_1_ls2_4x4 -s rav58-4x4 && cr
+r */37830 -1 load_new_from_lan -2 swang2_view_cue_tot_priv_1_ls2_4x4 -s pfc12-4x4 -t 10 && cr
+
 r */34358 -1 swang2_view_sue_tot_obs_1_4x2 && cr
 bat batch_sue_4x2_fdd.bat -1 swang2_view_sue_tot_obs_1_4x2 && cr
 
@@ -110,7 +120,9 @@ bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_8x8_checkin_1_ls2_8x8 -s PFC12-8x8
 bat batch_cue_4x4_tdd_in_8x8.bat -1 swang2_view_cue_8x8_code_review_lan_1_ls2_4x4 -s PFC12-4x4
 bat batch_cue_ls2_tdd_in_8x8.bat -1 swang2_view_cue_8x8_code_review_lan_1_ls2
 
-bat batch_cue_4x4_sanity.bat -1 swang2_view_cue_tot_ls2_4x4 -s PFC12-4x4
+bat batch_cue_4x4_sanity.bat -1 swang2_view_cue_tot_priv_1_ls2_4x4 -s PFC12-4x4
+bat batch_cue_4x4_sanity.bat -1 swang2_view_cue_tot_priv_1_ls2_4x4 -s RAV58-4x4
+
 
 r test\debug\cue\8x8\batch_mimo8x8_CUE_NAS_TDD.txt -1 swang2_view_cue_8x8_int_ls2_8x8_int -s PFC12-8x8
 r test\debug\cue\8x8\batch_8x8_CUE_PDCP_TDD.txt -1 swang2_view_cue_8x8_int3_eq_control_ls2_8x8 -s PFC12-8x8

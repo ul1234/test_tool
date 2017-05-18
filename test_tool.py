@@ -1901,7 +1901,7 @@ class TestTool:
         self.rel_build_ftp_path = os.path.join(self.rel_build_path, r'build\ftp')
         self.rel_build_hde_path = os.path.join(self.rel_build_path, r'build\hde')
         self.rel_build_pyd_path = r'lte_shared_app\database\config_db\cdd\asn\pyd'
-        self.pyd_file = ['_tm500_asn1_codec_25.pyd', '_tm500_asn1_codec_26.pyd']
+        self.pyd_file = ['_tm500_asn1_codec_25.pyd', '_tm500_asn1_codec_26.pyd', '_tm500_asn1_codec_27.pyd']
         self.rel_pyd_dir = '_pyd'
         self.traceviewer_rel_paths = [r'tm_build_system\build\release\traceviewer', r'tm_build_system\build\win32_obsolete', r'tm_build_system\build\win32']
         self.log_rel_paths = [r'tm_build_system\build\win32_obsolete', r'tm_build_system\build\win32', r'tm_build_system\build\release\loganalyse']

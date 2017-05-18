@@ -7,6 +7,7 @@ git config --global user.email "your_email@youremail.com"
 
 git remote add origin https://*.git
 
+git remote add origin ssh://git@github.com/username/repo.git
 
 git clone username@host:/path/to/repository
 
@@ -37,3 +38,10 @@ git diff <source_branch> <target_branch>
 
 git fetch origin
 git reset --hard origin/master
+
+git config --global diff.external <diff-tool-name>
+
+git config --global --unset diff.external
+
+git config --global --unset diff
+
