@@ -14,6 +14,7 @@ from remote import Remote
 from tsms import TSMS
 from proxy import WindowsProxySetting
 from check import CodeCheck
+from tc import TC
 # import readline
 
 
@@ -104,7 +105,7 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('copy_result', 'cr'), ('cmp_rslt', 'cmrlt'), ('open_soft', 'soft'), ('msg_identify', 'msg'), ('copy_change_files', 'cchange'),
               ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_cases', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
               ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'update'), ('build_py', 'bpy'),
-              ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'), ('EOF', 'q'), ('help', 'h')]
+              ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'), ('EOF', 'q'), ('help', 'h')]
 
     MONITOR_CMD = [] #['env', 'run_batch', 'build', 'update_rav']
     REMOTE_CMD = ['remote']
@@ -1125,6 +1126,41 @@ class CmdLine(CmdLineWithAbbrev):
             if show_auto_result: self.tool.show_run_result()
             if opts.change_run1: self.tool.set_run1_folder()  # change back to default run1 folder
             if opts.backup_boot: self.tool.backup_recover_boot(backup = False)  # recover original boot folder
+
+    @options([make_option("-f", "--fum", action = "store_true", dest = "fum", default = False, help = "run batch_fum.txt at first"),
+              make_option("-t", "--times", action = "store", type = "string", dest = "times", default = "1", help = "run times for each batch"),
+              make_option("-s", "--pfc_config", action = "store", type = "string", dest = "pfc_config", default = "default", help = "config, for example: CA, 8x8, etc."),
+              make_option("-v", "--rav_type", action = "store", type = "string", dest = "rav_type", default = "", help = "the type of rav, 8x82CC, etc."),
+              make_option("-m", "--mk", action = "store", type = "string", dest = "mk", default = "", help = "1/3/4 or MK1/MK3/MK4.x"),
+              make_option("-0", "--no_bin", action = "store_true", dest = "no_bin", default = False, help = "do not load any binary"),
+              make_option("-1", "--bin1", action = "store", type = "string", dest = "bin1", default = "", help = "the first binary used"),
+             ], "[-f] [-t times] [-s config] [-v rav_type] [-m mk] [-1 bin1] [-0] batch_file1(or '*') [batch_file2 ...]")
+    @min_args(1)
+    def do_run_teamcity(self, args, opts = None):
+        mk_all = {'MK1': ['1', 'MK1'], 'MK3': ['3', 'MK3'], 'MK4.x': ['4', 'MK4', 'MK4.X']}
+        mk = ''
+        for key, item in mk_all.items():
+            if opts.mk.upper() in item:
+                mk = key
+                break
+        if not mk: raise CmdException('invalid mk setting: %s, please use -m option' % opts.mk)
+        if not hasattr(self, 'tc'): self.tc = TC()
+        if len(args) == 1:
+            p = self.tool.get_temp_path(args[0])
+            if p: args[0] = os.path.join(p, '@^aTest.*.txt')  # '*': use newly gen cases
+        files = [os.path.join(p, '@^aTest.*.txt') if self.tool.get_abs_path(p, only_test_valid = True) else p for p in args]
+        batches = self.tool.get_re_files(files)
+        vec_files = [os.path.join(os.path.dirname(f), '@.*.aiq$') for f in files]
+        vectors = self.tool.get_re_files(vec_files)
+        if not batches: self.tool.print_('warning: no batches found!')
+        bin = '' if opts.no_bin else self.tool.get_abs_path(opts.bin1, 'binary')
+        self.tc.empty_dest_folder(empty_bin_folder = True if bin else False)
+        if bin: self.tc.copy_binary(bin)
+        self.tc.copy_batches(batches, opts.pfc_config, rav_type = opts.rav_type, umbra_update = opts.fum, run_times = int(opts.times))
+        if vectors: self.tc.gen_vec_list_file(vectors)
+        self.tool.print_('all files for teamcity have been prepared.')
+        self.tc.gen_all_upload_files(mk)
+        self.tc.run_tc()
 
     @options([make_option("-c", "--config_pattern", action = "store", type = "string", dest = "config_pattern", default = "", help = "re config pattern to filter config files"),
              ], "[-c pattern]")
