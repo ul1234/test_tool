@@ -882,10 +882,12 @@ class RemoteRunDialog(wx.Dialog):
                                     return
                             continue
                         self.ccFiles.append(f)
-                    
+        # temp change
         lines = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'upload_files.txt'), 'r').readlines()
-        comments_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'comments.txt')
-        self._comment = "Remote run (binaries) %s" % ('' if not os.path.isfile(comments_file) else '[%s]' % open(comments_file).read().strip())
+        self._comment = "Remote run (binaries)"
+        for comment_file in ['comment_1.txt', 'comment_2.txt']:
+            f = os.path.join(os.path.dirname(os.path.abspath(__file__)), comment_file)
+            if os.path.isfile(f): self._comment += ' [%s]' % open(f).read().strip()
         self.buildType = lines[0].strip()
         self.ccFiles = [line.strip() for line in lines[1:]]
         lines = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mapping.txt'), 'r').readlines()

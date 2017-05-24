@@ -31,7 +31,8 @@ class TC:
         self.test_case_folder = os.path.join(self.dest_folder, r'TestCases')
         self.vec_folder = os.path.join(self.dest_folder, r'Vectors')
         self.output_file = os.path.join(self.cache_folder, 'upload_files.txt')
-        self.comment_file = os.path.join(self.cache_folder, 'comments.txt')
+        self.comment_bin_file = os.path.join(self.cache_folder, 'comment_1.txt')
+        self.comment_cases_file = os.path.join(self.cache_folder, 'comment_2.txt')
         self.mapping_file = os.path.join(self.cache_folder, 'mapping.txt')
 
     def empty_dest_folder(self, empty_bin_folder = False):
@@ -52,7 +53,7 @@ class TC:
         pyd_path = pyd_path or os.path.join(bin_path, '_pyd')
         if not os.path.isdir(pyd_path): raise Exception('no valid pyd path: %s.' % pyd_path)
         WinCmd.copy_dir(pyd_path, self.pyd_folder, empty_dest_first = True)
-        open(self.comment_file, 'w').write(os.path.basename(bin_path))
+        open(self.comment_bin_file, 'w').write(os.path.basename(bin_path))
         self.print_('copy binary from %s successfully!' % bin_path)
 
     def gen_vec_list_file(self, vectors):
@@ -73,9 +74,11 @@ class TC:
     def copy_batches(self, batches, rav_config, rav_type = '', umbra_update = False, run_times = 1):
         self.copy_cases(batches)
         WinCmd.copy_files(batches, self.batch_folder, empty_dir_first = True)
-        if run_times > 1:
-            for batch_file in batches:
-                self._change_batch_run_times(os.path.join(self.batch_folder, os.path.basename(batch_file)), run_times)
+        cases_num = 0
+        for batch_file in batches:
+            if run_times > 1: self._change_batch_run_times(os.path.join(self.batch_folder, os.path.basename(batch_file)), run_times)
+            batch_cases, _ = self._get_batch_cases(batch_file)
+            cases_num += len(batch_cases)
         if os.path.isdir(self.bat_folder):
             WinCmd.del_dir(self.bat_folder)
         else:
@@ -83,6 +86,8 @@ class TC:
         rav_type = rav_type or rav_config
         bat_path = os.path.join(self.bat_folder, rav_type.upper())
         self._gen_bat_file(bat_path, batches, rav_config.upper(), umbra_update)
+        cases_comment = r'%d cases%s@%d batches' % (cases_num, '*%d' % run_times if run_times > 1 else '', len(batches))
+        open(self.comment_cases_file, 'w').write(cases_comment)
         self.print_('copy %d batches (each case %d times) successfully!' % (len(batches), run_times))
 
     def _gen_bat_file(self, bat_path, batches, rav_config, umbra_update = False):
@@ -137,7 +142,6 @@ class TC:
 
     def gen_all_upload_files(self, mk = 'MK3'):
         if not mk in ['MK1', 'MK3', 'MK4.x']: raise Exception('invalid mk: %s' % mk)
-
         files_num = 0
         with open(self.output_file, 'w') as f_write:
             f_write.write(mk + '\n')
