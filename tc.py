@@ -32,6 +32,7 @@ class TC:
         self.vec_folder = os.path.join(self.dest_folder, r'Vectors')
         self.output_file = os.path.join(self.cache_folder, 'upload_files.txt')
         self.comment_file = os.path.join(self.cache_folder, 'comments.txt')
+        self.mapping_file = os.path.join(self.cache_folder, 'mapping.txt')
 
     def empty_dest_folder(self, empty_bin_folder = False):
         if empty_bin_folder:
@@ -80,8 +81,8 @@ class TC:
         else:
             WinCmd.make_dir(self.bat_folder)
         rav_type = rav_type or rav_config
-        bat_path = os.path.join(self.bat_folder, rav_type)
-        self._gen_bat_file(bat_path, batches, rav_config, umbra_update)
+        bat_path = os.path.join(self.bat_folder, rav_type.upper())
+        self._gen_bat_file(bat_path, batches, rav_config.upper(), umbra_update)
         self.print_('copy %d batches (each case %d times) successfully!' % (len(batches), run_times))
 
     def _gen_bat_file(self, bat_path, batches, rav_config, umbra_update = False):
@@ -136,6 +137,7 @@ class TC:
 
     def gen_all_upload_files(self, mk = 'MK3'):
         if not mk in ['MK1', 'MK3', 'MK4.x']: raise Exception('invalid mk: %s' % mk)
+
         files_num = 0
         with open(self.output_file, 'w') as f_write:
             f_write.write(mk + '\n')
@@ -145,6 +147,29 @@ class TC:
                     f_write.write(f + '\n')
                     files_num += 1
         self.print_('gen %s (total %d files) successfully!' % (self.output_file, files_num))
+        self._gen_mapping_file()
+
+    def _gen_mapping_file(self):
+        #temp\ftp=jetbrains.git://|\\stv-teamcitymas.aeroflex.corp\git_projects\remote_run|\ftp
+        #temp\pyd=jetbrains.git://|\\stv-teamcitymas.aeroflex.corp\git_projects\remote_run|\ASN
+        #temp\Batch=jetbrains.git://|\\stv-teamcitymas.aeroflex.corp\git_projects\remote_run|\BatchFiles
+        #temp\BatchFiles\8X82CC=jetbrains.git://|\\stv-teamcitymas.aeroflex.corp\git_projects\remote_run|\BatchFiles\8X82CC
+        mapping_middle_str = r'=jetbrains.git://|\\stv-teamcitymas.aeroflex.corp\git_projects\remote_run|' + '\\'
+        mapping_list = [[('ftp', r'BatchFiles\*', 'TestCases', 'Vectors'), ''], ['pyd', 'ASN'], ['Batch', 'BatchFiles']]
+        with open(self.mapping_file, 'w') as f_write:
+            for dir_path, subpaths, files in os.walk(self.dest_folder):
+                rel_temp_path = os.path.relpath(dir_path, self.dest_folder)
+                if rel_temp_path == '.': continue
+                check_path = rel_temp_path if not os.path.dirname(rel_temp_path) else os.path.join(os.path.dirname(rel_temp_path), '*')
+                map_path = ''
+                for check, map in mapping_list:
+                    found = (check_path in check) if isinstance(check, tuple) else check_path == check
+                    if found: map_path = map if map else rel_temp_path
+                if not map_path:
+                    if not rel_temp_path.startswith('ftp') and rel_temp_path != 'BatchFiles': self.print_('Warning: cannot map the path %s' % rel_temp_path)
+                else:
+                    f_write.write(r'temp\%s%s%s' % (rel_temp_path, mapping_middle_str, map_path) + '\n')
+        self.print_('gen %s successfully!' % self.mapping_file)
 
     def run_tc(self):
         py_copy_file = 'tc_copy.py'

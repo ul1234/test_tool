@@ -91,6 +91,8 @@ r */41044 -1  LTE-CUE-LS28X8_17_04_20_10_10_15 -s pfc12-8x8 && cr
 
 r */41020 -1 swang2_view_cue_tot_for_ubi_ls2_8x8 -s pfc12-8x8 && cr
 
+rtc */8x8 -1 swang2_view_cue_tot_for_ubi_ls2_8x8 -s 8x81CC -v 8x82CC -m 4 -0
+
 r */90309 -1 LTE-SUE-4X2-LSA-MKI_L1_17_01_19_17_28_30 && cr
 
 r */34941 -1 LTE-MUE-C0309-LDC_L1_17_04_25_03_54_00 && cr -m

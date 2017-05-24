@@ -888,6 +888,8 @@ class RemoteRunDialog(wx.Dialog):
         self._comment = "Remote run (binaries) %s" % ('' if not os.path.isfile(comments_file) else '[%s]' % open(comments_file).read().strip())
         self.buildType = lines[0].strip()
         self.ccFiles = [line.strip() for line in lines[1:]]
+        lines = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mapping.txt'), 'r').readlines()
+        self._mappingProperties += [line.strip() for line in lines]
         print 'buildType: %s, comment: %s, total %d files' % (self.buildType, self._comment, len(self.ccFiles))
         
         if len(self.ccFiles) == 0:
@@ -1051,7 +1053,16 @@ class RemoteRunDialog(wx.Dialog):
             wx.CallAfter(self._add_exception, "Failed to populate tree", e)
             return
 
-        wx.CallAfter(self._create_sub_dialog, items, checkable, filesToAdd)
+        #wx.CallAfter(self._create_sub_dialog, items, checkable, filesToAdd)
+        wx.CallAfter(self._create_sub_dialog_no_dialog, items, checkable, filesToAdd)
+
+    def _create_sub_dialog_no_dialog(self, items, checkable, filesToAdd):
+        filesToAdd = [(f[1], f[2]) for f in filesToAdd]
+        if len(filesToAdd) > 0:
+            self._add_text("Getting versions of new files on branch...")
+            Thread(target = self._create_remote_run, args = (filesToAdd,)).start()
+        else:
+            self._add_text("No files selected; aborting")
 
     def _create_sub_dialog(self, items, checkable, filesToAdd):
         root = SimpleCheckItem(cc.viewRoot, items, checked = checkable, display = SimpleCheckItem.EXPANDED if checkable != SimpleCheckItem.NO_CHECKBOX else SimpleCheckItem.FOLDED)
