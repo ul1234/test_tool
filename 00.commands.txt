@@ -92,8 +92,15 @@ r */41044 -1  LTE-CUE-LS28X8_17_04_20_10_10_15 -s pfc12-8x8 && cr
 r */41020 -1 swang2_view_cue_tot_for_ubi_ls2_8x8 -s pfc12-8x8 && cr
 
 rtc */8x8 -1 swang2_view_cue_tot_for_ubi_ls2_8x8 -s 8x81CC -v 8x82CC -m 4 -0
+rtc */8x8_2cc_batch -1 LMV_8_2_0_REV03 -s 8x82CC -m 4
+
+rtc */41020 -1 swang2_view_cue_tot_for_ubi_ls2_8x8 -s 8x81CC -v 8x82CC -m 4 -0
+rtc */52054 -1 LTE-CUE-ABB_17_05_23_16_32_44 -s 3CC -m 3 -t 3
+
+rtc */52054 -1 swang2_view_cue_tot_for_ubi_ls2 -s 3CC -m 3 -t 20
 
 r */90309 -1 LTE-SUE-4X2-LSA-MKI_L1_17_01_19_17_28_30 && cr
+r */90309 -1 LTE-SUE-4X2-LSA-MKI_L1_17_05_23_04_52_56 && cr
 
 r */34941 -1 LTE-MUE-C0309-LDC_L1_17_04_25_03_54_00 && cr -m
 
@@ -112,7 +119,7 @@ bat batch_sue_4x2_fdd.bat -1 swang2_view_sue_tot_obs_1_4x2 && cr
 
 glog -p C:\wang\modules\8x8\logs -z "dat$ && extract -p C:\wang\modules\8x8\logs -z "dsp.txt -d 0.3|0.4|1.2 -x 0
 
-bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_bugfix_2_ls2_8x8 -s PFC12-8x8
+bat batch_cue_8x8_tdd.bat -1 LMV_8_2_0_REV03 -s PFC12-8x8
 
 bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_8x8_int3_eq_control_merge_ls2_8x8 -s rav23-8x81cc
 bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_8x8_merge_to_tot_priv_1_ls2_8x8 -s rav23-8x81cc

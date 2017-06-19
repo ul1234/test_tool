@@ -55,7 +55,7 @@ class CcTool:
             lines = open(CcTool.temp_file, 'r').readlines()
             branch = lines[0].split('"')[1]
             obsoleted = lines[0].find('obsolete') > 0
-            r = re.search(r'(\d{4})-(\d{2})-(\d{2})T[^\(]+\(([^\.]+)\.', lines[1].strip())
+            r = re.search(r'(\d{4})-(\d{2})-(\d{2})T.*?\b\(?(\w+)\.', lines[1].strip())
             if r:
                 time = datetime(*tuple([int(r.group(i)) for i in [1,2,3]]))
                 user = r.group(4).lower()

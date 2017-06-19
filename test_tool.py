@@ -1829,7 +1829,8 @@ class CmdLine(CmdLineWithAbbrev):
     @options([make_option("-v", "--view", action = "store_true", dest = "view", default = False, help = "view all pre-saved text"),
              ], "[-v] [number]")
     def do_text(self, args, opts = None):
-        PRE_SAVED_TEXT = [r'python P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\tools\test_tool.py',
+        PRE_SAVED_TEXT = [r'python \\ubimelfs.aeroflex.corp\UbiNetics\Development\Projects\AAS_TM500_LTE\User_Working_Folders\WangShouliang\tools\test_tool.py',
+                          r'python P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\tools\test_tool.py',
                           r'P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang']
         if opts.view:
             for i, text in enumerate(PRE_SAVED_TEXT):

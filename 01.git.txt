@@ -5,6 +5,8 @@ ssh -T git@github.com
 git config --global user.name "your name"
 git config --global user.email "your_email@youremail.com"
 
+git init
+
 git remote add origin https://*.git
 
 git remote add origin ssh://git@github.com/username/repo.git
@@ -44,4 +46,22 @@ git config --global diff.external <diff-tool-name>
 git config --global --unset diff.external
 
 git config --global --unset diff
+
+git remote add upstream https://..../.git
+git remote -v
+
+git checkout -- JDPackage/spider.pyc
+
+强制删除某个文件和他的历史记录
+git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch path-to-your-remove-file' --prune-empty --tag-name-filter cat -- --all
+git push origin master --force
+
+
+# work on some code
+git stash
+git checkout correct-branch
+git stash pop
+
+
+git checkout -b <new-branch>
 
