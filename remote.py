@@ -141,6 +141,12 @@ class RunProxy(object):
             return [str(e)]
         return result[0]
 
+    def _time_sleep_if_continous_condition(self, sleep_time, condition, continuous_times):
+        if not hasattr(self, 'continuous_times'): self.continuous_times = 0
+        self.continuous_times = self.continuous_times + 1 if condition else 0
+        if self.continuous_times > continuous_times:
+            time.sleep(sleep_time)
+
     def _check_cmd_deamon(self):
         cmd = ''
         if os.path.isfile(self.up_file):
@@ -148,6 +154,7 @@ class RunProxy(object):
             if len(lines) == 2 and lines[1] == 'END':
                 cmd = lines[0].strip()
                 self.empty(self.up_file)
+        self._time_sleep_if_continous_condition(10, not cmd, 300)  # if 300 times (5 minutes) no command, wait 10s
         if cmd:
             self.print_('start run cmd: %s' % cmd)
             result = self.run(cmd)

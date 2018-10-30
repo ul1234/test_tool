@@ -1,0 +1,9 @@
+*.pyc
+rav_cache/
+temp/
+remote/
+sem/
+test/
+trans/
+tsms/
+

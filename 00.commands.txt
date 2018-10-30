@@ -13,7 +13,80 @@ python \\ubimelfs.aeroflex.corp\UbiNetics\Development\Projects\AAS_TM500_LTE\Use
 python X:\TM500\SLWang\00.test\tools\test_tool.py
 python E:\05.Tools\00.Test_Tool\test_tool.py
 
+python \\ltn3-pur-uwf.aeroflex.corp\data\swang2\tools\test_tool.py
+
+(FULL control)
+python \\ltn3-eud-nas01\data\SHA2\swang2\tools\test_tool.py
+
 ##################### CUE #################
+https://emea-teamcity.aeroflex.corp/buildArtifacts.html?buildId=1262036&showAll=false&lazy-tree-update=1&lazy-tree-root=iyty2io3&lazy-tree-path=iyty2io3
+
+https://emea-teamcity.aeroflex.corp/repository/download/RemoteRun_BinariesTestNr5g_BinariesRun/1264919:id/Run1.zip
+
+https://emea-teamcity.aeroflex.corp/repository/download/RemoteRun_BinariesTestNr5g_BinariesRun/1264919:id/Run1.zip%21/99331_NR5G_PDCP_100Mhz_TDD_3_1_1CW_DCI_1_0_DCI_00_Dyn_HARQ_ACK_PUSCH_K_7_20181030-02-59-57.html
+
+
+b -p nbiot_scaling D:\Projects\swang2_view_cue_tot_feature_3 -b -0
+
+
+r */21044 -1 LTE-CUE-ABB_18_06_05_15_33_24 && cr -m && cr -f "pxi$
+
+r */21044 -1 swang2_view_cue_tot_feature_2_nbiot_scaling -s RAV84-NB -u && cr -m && cr -f "pxi$
+
+r */21044 -1 swang2_view_cue_tot_feature_1_nbiot_scaling -s RAV84-NB -u && cr -m && cr -f "pxi$
+
+r */fail -1 swang2_view_cue_tot_feature_3_nbiot_scaling -s RAV84-NB -u && cr
+
+r */fail -1 LTE-CUE-ABB_18_06_13_14_40_17 -s RAV84-NB -u && cr -m && cr -f "pxi$
+
+r */fail -1 swang2_view_cue_tot_feature_1_nbiot_scaling_7301 -s RAV84-NB -u && cr -m && cr -f "pxi$
+
+r */fail -1 swang2_view_cue_tot_feature_3_nbiot_scaling -s PFC10-NB -u && cr -m && cr -f "pxi$
+
+r */fail -1 swang2_view_cue_tot_feature_2_nbiot_scaling -s PFC10-NB -u && cr -m && cr -f "pxi$
+
+r */21018_legacy -1 LTE-CUE-ABB_18_05_15_14_15_17 && cr
+
+r */21474 -1 swang2_view_cue_tot_feature_1_nbiot_scaling -s PFC10-NB -u && cr -m && cr -f "pxi$
+r */21018_legacy -1 swang2_view_cue_tot_feature_1_legacy_nbiot_scaling -u && cr -m && cr -f "pxi$
+
+r */21474 -1 swang2_view_cue_tot_feature_1_fix_gain_nbiot_scaling -s PFC10-NB -u && cr -m && cr -f "pxi$
+
+
+r */21474 -1 swang2_view_cue_tot_feature_2_nbiot_scaling -s PFC10-NB -u && cr -m && cr -f "pxi$ && r */21018_legacy -1 swang2_view_cue_tot_feature_2_nbiot_scaling -u && cr -m && cr -f "pxi$
+
+r */sanity_1 -1 swang2_view_cue_tot_feature_1_nbiot_scaling -s PFC10-NB && cr
+r */crash -1 swang2_view_cue_tot_feature_1_nbiot_scaling -s PFC10-NB && cr
+
+r */sanity_2 -1 swang2_view_cue_tot_feature_3_nbiot_scaling -s PFC10-NB && cr
+
+r */fail -1 swang2_view_cue_tot_feature_3_nbiot_scaling -s PFC10-NB && cr
+r */fail -1 swang2_view_cue_tot_feature_3_nbiot_scaling_old -s PFC10-NB && cr
+
+
+
+r */fail -1 swang2_view_cue_tot_feature_2_nbiot_scaling -s PFC10-NB && cr
+
+r */21468_legacy -1 LTE-CUE-ABB_18_05_04_18_21_23 -f -u && cr
+r */21468_legacy -1 legacy_ftp -0 && cr
+
+scons all product=NR5G
+scons all product=NR5G build=unittest
+scons all product=NR5G build=comptest
+
+scons all basebands=ls2 defines=USE_NBIOT_SFE_FPGA -j8
+scons all basebands=ls2 -j8
+
+scons nbiot_l0
+scons nbiot_l0_unittest build=unittest
+scons nbiot_l0_comptest build=comptest
+
+scons nbiot_l0_dl_mob_mdl_unittest build=unittest
+
+
+r */21457 -1 swang2_view_cue_tot_feature_1_nbiot -s RAV84-NB -u && cr
+r */21461 -1 swang2_view_cue_tot_feature_1_nbiot -s RAV84-NB -u && cr && cr -f "slog.*.dat
+
 
 hde -p C:\Projects\swang2_view_cue_8x8_int3_eq_control_merge -u C:\wang\modules\8x8\HDE "Cat_14.usf "Cat_14.usf "Cat_14.usf "Cat_14.usf
 hde -p C:\Projects\swang2_view_cue_8x8_int3_eq_control -u C:\wang\modules\8x8\HDE\41099 "usf "usf "usf "usf
@@ -73,7 +146,7 @@ r */36064 -1 swang2_view_cue_8x8_merge_to_tot_priv_1_ls2 -s PFC12-8x8 && cr -m
 r */8x8 -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 -s PFC12-8x8 && cr
 
 r */31887 -1 swang2_view_cue_8x8_code_review_lan_1_fix_int_ls2_4x4 -s PFC12-4x4  && cr
-
+auto
 r */41046 -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 -s rav23-8x82cc && cr
 r */85620 -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 -s PFC12-8x8 && cr
 r */82833 -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 -s PFC12-4x4 && cr
@@ -93,14 +166,15 @@ r */41020 -1 swang2_view_cue_tot_for_ubi_ls2_8x8 -s pfc12-8x8 && cr
 
 rtc */8x8 -1 swang2_view_cue_tot_for_ubi_ls2_8x8 -s 8x81CC -v 8x82CC -m 4 -0
 rtc */8x8_2cc_batch -1 LMV_8_2_0_REV03 -s 8x82CC -m 4
+rtc */8x8_2cc_batch -1 swang2_view_cue_tot_priv_master_1_ls2_8x8 -s 8x82CC -m 4
 
 rtc */41020 -1 swang2_view_cue_tot_for_ubi_ls2_8x8 -s 8x81CC -v 8x82CC -m 4 -0
 rtc */52054 -1 LTE-CUE-ABB_17_05_23_16_32_44 -s 3CC -m 3 -t 3
 
 rtc */52054 -1 swang2_view_cue_tot_for_ubi_ls2 -s 3CC -m 3 -t 20
 
-r */90309 -1 LTE-SUE-4X2-LSA-MKI_L1_17_01_19_17_28_30 && cr
-r */90309 -1 LTE-SUE-4X2-LSA-MKI_L1_17_05_23_04_52_56 && cr
+
+r */90309 -1 LTE-SUE-4X2-LSA-MKI_L1_17_06_16_04_28_24 && cr
 
 r */34941 -1 LTE-MUE-C0309-LDC_L1_17_04_25_03_54_00 && cr -m
 
@@ -119,6 +193,7 @@ bat batch_sue_4x2_fdd.bat -1 swang2_view_sue_tot_obs_1_4x2 && cr
 
 glog -p C:\wang\modules\8x8\logs -z "dat$ && extract -p C:\wang\modules\8x8\logs -z "dsp.txt -d 0.3|0.4|1.2 -x 0
 
+bat batch_cue_sanity.bat -1 swang2_view_cue_nbiot_omm_checkin_2_nbiot -s RAV84-NB
 bat batch_cue_8x8_tdd.bat -1 LMV_8_2_0_REV03 -s PFC12-8x8
 
 bat batch_cue_8x8_tdd.bat -1 swang2_view_cue_8x8_int3_eq_control_merge_ls2_8x8 -s rav23-8x81cc
@@ -394,6 +469,8 @@ ravbin -1  swang2_view_cue_8x8_merge_to_tot_priv_1_ls2 LTE-CUE-LS2-8x8merge_L1_1
 ravbin -1 swang2_view_cue_8x8_code_review_lan_1_ls2 LTE-CUE-LS2-8x8review_L1_17_03_29_09_10_41 -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
 ravbin -1 swang2_view_cue_8x8_code_review_lan_1_ls2_4x4 LTE-CUE-LS24X4-8x8review_L1_17_03_29_09_10_41 -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
 ravbin -1 swang2_view_cue_8x8_code_review_lan_1_ls2_8x8 LTE-CUE-LS28X8-8x8review_L1_17_03_29_09_10_41 -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
+
+ravbin -1 swang2_view_cue_lmc_250_int_loadsys_split_dl   LTE-MUE-C0309-LDC_L1_16_06_13_Shouliang -o P:\AAS_TM500_LTE\User_Working_Folders\WangShouliang\Users\ForRAV
 
 # generate batch
 ravbatch -p mue_5c_tdd test\batch\batch_mue_5c_tdd.bat && ravbatch -p mue_8c_tdd test\batch\batch_mue_8c_tdd.bat && ravbatch -p mue_5c_fdd test\batch\mue\batch_mue_5c_fdd.bat && ravbatch -p mue_8c_fdd test\batch\mue\batch_mue_8c_fdd.bat

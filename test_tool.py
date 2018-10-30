@@ -104,7 +104,8 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('copy_case', 'cc'), ('delete_binary', 'dbin'), ('gen_rav_priv_bin', 'ravbin'), ('gen_rav_cases_batch', 'ravbatch'), ('gen_cpu_sym', 'cpu'),
               ('copy_result', 'cr'), ('cmp_rslt', 'cmrlt'), ('open_soft', 'soft'), ('msg_identify', 'msg'), ('copy_change_files', 'cchange'),
               ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_cases', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
-              ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'update'), ('build_py', 'bpy'),
+              ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'urav'), ('build_py', 'bpy'),
+              ('update_batch', 'ubatch'),
               ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'), ('EOF', 'q'), ('help', 'h')]
 
     MONITOR_CMD = [] #['env', 'run_batch', 'build', 'update_rav']
@@ -588,6 +589,19 @@ class CmdLine(CmdLineWithAbbrev):
                 if not opts.not_split:
                     self._runcmd('split_files -s %s -p %d %s %s %s' % (opts.piece_size, index, '-x' if opts.excel else '', '-b' if opts.bytes_align else '', f))
                 break
+
+    @options([make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
+             ], "[-p path] {files(regex)}")
+    def do_combine(self, args, opts = None):
+        files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
+        files.sort()
+        output_file_name, output_file_ext = os.path.splitext(files[0])
+        output_file = '%s_combine%s' % (output_file_name, output_file_ext)
+        with open(output_file, 'w') as f_write:
+            for f in files:
+                f_write.write(open(f).read())
+                f_write.write('\r\n')
+        self.tool.print_('combine file to %s successfully!' % os.path.basename(output_file))
 
     @options([make_option("-d", "--dsp_cores", action = "store", type = "string", dest = "dsp_cores", default = "", help = "dsp core number, e.g. 4.1|2, default means all"),
               make_option("-m", "--hlc_cores", action = "store", type = "string", dest = "hlc_cores", default = "", help = "hlc core number, e.g. 4.1|2, default means all"),
@@ -1413,7 +1427,7 @@ class CmdLine(CmdLineWithAbbrev):
     @options([make_option("-k", "--kill", action = "store_true", dest = "kill", default = False, help = "kill log process"),
               make_option("-p", "--project_path", action = "store", type = "string", dest = "project_path", default = "", help = "project path"),
               make_option("-o", "--output_path", action = "store", type = "string", dest = "output_path", default = "", help = "output log path"),
-              make_option("-d", "--dsp", action = "store", type = "string", dest = "dsp", default = "", help = "logged dsp core, example: 13|16 or 1.0|2.1 "),
+              make_option("-d", "--dsp", action = "store", type = "string", dest = "dsp", default = "", help = "logged dsp core, example: server or 13|16 or 1.0|2.1 "),
              ], "[-k] [-p project_path] [-o output_path] [-d dsp]")
     def do_hde_log(self, args, opts = None):
         if opts.kill:
@@ -1451,6 +1465,13 @@ class CmdLine(CmdLineWithAbbrev):
         else:
             raise CmdException('cmd "%s" not valid!' % cmd)
         self.tool.print_('%s files finished.' % cmd)
+        
+    @options([make_option("-v", "--dynamic_view", action = "store", type = "string", dest = "dynamic_view", default = "Z:", help = "dynamic view path"),
+             ], "[-v dynamic_view_path] project_path")
+    @min_args(1)
+    def do_presub(self, args, opts = None):
+        self.tool.presub(args[0], opts.dynamic_view)
+        self.tool.print_('presub run ok!')
 
     @options([make_option("-u", "--username", action = "store", type = "string", dest = "username", default = "swang2", help = "username"),
               make_option("-d", "--days_ago", action = "store", type = "string", dest = "days_ago", default = "200", help = "days ago to obsolete"),
@@ -1614,12 +1635,16 @@ class CmdLine(CmdLineWithAbbrev):
         else:
             self.tool.print_('reboot cancelled.')
 
-    @options([], "[1] {insight}")
+    @options([make_option("-t", "--time", action = "store", type = "string", dest = "time", default = "", help = "time [0, 1]"),
+             ], "[1] {insight}")
     def do_open_soft(self, args, opts = None):
         times = 1 if len(args) == 0 else int(args[0])
         soft = 'insight' if len(args) < 2 else args[1]
         soft_path = {'insight': (r'C:\Program Files (x86)\Source Insight 3\Insight3.exe', '01-03-2014')}
         file_location, install_date = soft_path[soft]
+        if opts.time:
+            install_time_candidates = ['01-03-2014', '18-01-2018'];
+            install_date = install_time_candidates[int(opts.time)]
         file_locations = [file_location, file_location.replace(r'C:\Program Files (x86)', r'C:\Program Files')]
         file_locations = [f for f in file_locations if os.path.isfile(f)]
         if not file_locations: raise CmdException('No software %s found!' % soft)
@@ -1751,6 +1776,13 @@ class CmdLine(CmdLineWithAbbrev):
             raw_input(r'press any key to continue...')
         self.tool.update_result()
         if not opts.only_update: self._runcmd('rename')
+
+    @options([make_option("-g", "--git_path", action = "store", type = "string", dest = "git_path", default = r"C:\wang\02.Git\tm_tests\batch", help = "git path"),
+              make_option("-p", "--path", action = "store", type = "string", dest = "batch_path", default = r"C:\wang\00.Work\NR5G\test\batch", help = "batch path"),
+             ], "")
+    def do_update_batch(self, args, opts = None):
+        batches = self.tool.update_batch(opts.git_path, opts.batch_path)
+        self.tool.print_('updated %d batches to %s successfully!' % (len(batches), opts.batch_path))
 
     @options([], "")
     def do_fix_remote_copy(self, args, opts = None):
@@ -1970,8 +2002,8 @@ class TestTool:
         self.shanghai_ip_addr_base = '10.130.0.0'
         self.stevenage_ip_addr_base = '10.120.169.0'
         self.tsms = TSMS(path = os.path.join(self.file_path, 'tsms'))
-        self.transfer_folder = r'\\stv-nas.aeroflex.corp\ext-data\sgh\Transfer\forShouliang'  # r'\\stv-nas\ext-data\Transfer\forShouliang'
-        self.mirror_transfer_folder = r'\\sgp-nas01\Home\Transfer\forShouliang'
+        self.transfer_folder = r'\\ltn3-eud-nas01\data\SHA2\swang2\transfer'
+        self.mirror_transfer_folder = r'\\ltn3-apd-nas01\data\SHA2\swang2\transfer'
         self.signal_folder = os.path.join(self.transfer_folder, 'signal')
         self.remote_copy_folder = os.path.join(self.transfer_folder, 'clipboard')
         if clear_signals: self.clear_signals()
@@ -2686,7 +2718,7 @@ class TestTool:
         index_found = -1
         for i, piece in enumerate(gen_pieces):
             data = self._file_split_data(filename, piece, n, not bytes_align)
-            if re.search(regex, data):
+            if re.search(regex, data, flags = re.IGNORECASE):
                 index_found = i
                 break
         return (index_found, n)
@@ -4308,6 +4340,15 @@ class TestTool:
         if not hasattr(self, 'code_check'): self.code_check = CodeCheck()
         self.code_check.check(files, output_file)
 
+    def presub(self, project_path, dynamic_view_path):
+        temp_file = self.get_temp_filename()
+        if os.path.isfile(temp_file): WinCmd.del_file(temp_file)
+        WinCmd.cmd('cleartool catcs > %s' % temp_file, project_path, showcmdwin = False, wait = True)
+        if not os.path.isfile(temp_file): raise CmdException('cannot export configspec of view: %s' % project_path)
+        WinCmd.cmd('cleartool setcs %s' % temp_file, dynamic_view_path, showcmdwin = False, wait = True)
+        presub_path = os.path.join(dynamic_view_path, 'tm_build_system', 'teamcity')
+        WinCmd.cmd('python presub.pyw', presub_path, showcmdwin = False)
+
     def obsolete_branches(self, branches, username, days_ago = 200):
         time_now = datetime.now()
         time_delta = timedelta(days = days_ago)
@@ -4384,12 +4425,16 @@ class TestTool:
         if not os.path.isdir(log_path): raise CmdException('no path found: %s' % log_path)
         titles = []
         for dspno in dsps:
-            title = 'hde_log_%s_dsp%s_%s' % (project_name, dspno, datetime.now().strftime('%y%m%d_%H%M%S'))
-            # core 0: port_num = 5750 + iDspNum;
-            # other core: port_num = 1e4 + 1e3 * iCoreNum + iDspNum + 50;
-            if dspno.find('.') < 0: dspno = dspno + '.0'
-            dspnum, corenum = [int(x) for x in dspno.split('.')]
-            port_num = (5750 + dspnum) if corenum == 0 else (10050 + 1000*corenum + dspnum)
+            if dspno.lower() == 'server':
+                title = 'hde_log_%s_dsp_%s_%s' % (project_name, dspno, datetime.now().strftime('%y%m%d_%H%M%S'))
+                port_num = 25700
+            else:
+                title = 'hde_log_%s_dsp%s_%s' % (project_name, dspno, datetime.now().strftime('%y%m%d_%H%M%S'))
+                # core 0: port_num = 5750 + iDspNum;
+                # other core: port_num = 1e4 + 1e3 * iCoreNum + iDspNum + 50;
+                if dspno.find('.') < 0: dspno = dspno + '.0'
+                dspnum, corenum = [int(x) for x in dspno.split('.')]
+                port_num = (5750 + dspnum) if corenum == 0 else (10050 + 1000*corenum + dspnum)
             command = r'loganalyse.exe -i127.0.0.1:%d > %s\%s.txt' % (port_num, log_path, title)
             titles.append(title)
             WinCmd.cmd(command, log_tool_path, showcmdwin = True, wait = False, retaincmdwin = True, title = title)
@@ -4579,6 +4624,28 @@ class TestTool:
             WinCmd.explorer(rrc_file)
         else:
             self.print_('[Error] cannot decode the string. Please check.')
+
+    def update_batch(self, git_path, batch_path):
+        WinCmd.cmd('git pull', git_path, showcmdwin = True, wait = True, retaincmdwin = False)
+        sanity_batches = [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt',
+                          r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt',
+                          r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt',
+                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
+                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_120KHz_Basic.txt',
+                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt']
+        batches = [r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
+                   r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
+                   r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL_120Khz.txt',
+                   r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL.txt'] + sanity_batches
+        bak_dir = os.path.join(os.path.dirname(batch_path), 'batch_bak')
+        sanity_dir = os.path.join(batch_path, 'sanity')
+        WinCmd.copy_dir(batch_path, bak_dir, empty_dest_first = True, include_src_dir = False)
+        self.print_('backup batches to folder: %s' % bak_dir)
+        source_batches = [os.path.join(git_path, b) for b in batches]
+        WinCmd.copy_files(source_batches, batch_path, empty_dir_first = False)
+        sanity_source_batches = [os.path.join(batch_path, b) for b in sanity_batches]
+        WinCmd.copy_files(sanity_source_batches, sanity_dir, empty_dir_first = False)
+        return batches
 
     @use_system32_on_64bit_system
     def fix_remote_copy_paste(self):
