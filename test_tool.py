@@ -7,7 +7,7 @@ import os, re, sys, traceback, cmd, time, ConfigParser, urllib2, socket, threadi
 import win32api, win32gui, win32con
 from datetime import datetime, timedelta
 from wincmd import WinCmd
-from clipcomm import ClipComm
+from clipcomm import ClipComm, ZipUtil
 from cctool import CcTool
 from strtool import StrTool
 from remote import Remote
@@ -105,7 +105,7 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('copy_result', 'cr'), ('cmp_rslt', 'cmrlt'), ('open_soft', 'soft'), ('msg_identify', 'msg'), ('copy_change_files', 'cchange'),
               ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_cases', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
               ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'urav'), ('build_py', 'bpy'),
-              ('update_batch', 'ubatch'),
+              ('update_batch', 'ubatch'), ('build_lte', 'blte'),
               ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'), ('EOF', 'q'), ('help', 'h')]
 
     MONITOR_CMD = [] #['env', 'run_batch', 'build', 'update_rav']
@@ -431,7 +431,6 @@ class CmdLine(CmdLineWithAbbrev):
             self.tool.print_('Run %s finished.' % py_file)
 
     @options([make_option("-p", "--product", action = "store", type = "string", dest = "product", default = "", help = "sue:[4x2]|4x4|2x2|4x2ULMIMO, mue:[2x2]|2x2_SPLIT_DL, cue:[EXTMUE]|LOADSYS_SPLIT_DL|LS2_DL|LS2"),
-              make_option("-r", "--rat", action = "store", type = "string", dest = "rat", default = "", help = "[]|FDD|TDD"),
               make_option("-d", "--hde", action = "store_true", dest = "hde", default = False, help = "build hde or target"),
               make_option("-n", "--name", action = "store", type = "string", dest = "name", default = "", help = "binary path name"),
               make_option("-j", "--cpu_num", action = "store", type = "string", dest = "cpu_num", default = "8", help = "cpu num used"),
@@ -442,7 +441,92 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-b", "--binary", action = "store_true", dest = "binary", default = False, help = "output to binary folder, shortcut for -o user"),
               make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output path, path1|path2"),
               make_option("-0", "--not_build", action = "store_true", dest = "not_build", default = False, help = "do not actually build, may use to move binary only")],
-             "[-p PRODUCT] [-r RAT] [-d] [-b] [-0] [-n name] [-w] [-j 8] [-1] [-m] [-o bin_path1|bin_path2] project_path [cpu/c66cpu(0-5, 7, 9-11)]")
+             "[-p PRODUCT] [-d] [-b] [-0] [-n name] [-w] [-j 8] [-1] [-m] [-o bin_path1|bin_path2] project_path [cpu/c66cpu(0-5, 7, 9-11)]")
+    @min_args(1)
+    def do_build_lte(self, args, opts = None):
+        project_path, output_paths = args[0], self._split_option(opts.output)
+        self.tool.check_folder_exist(project_path)
+        self._set_default_project_path(project_path)
+        output_paths = ['default' if p == 'user' else p for p in output_paths]
+        if opts.binary: output_paths.append('default')
+        output_paths = list(set(output_paths))
+        temp_output_paths, output_paths = output_paths, []
+        for output_path in temp_output_paths:
+            if output_path == 'default': output_path = self.tool.binary_path
+            self.tool.check_folder_exist(output_path, can_be_empty = True)
+            output_paths.append(output_path)
+        build_cmd_path = os.path.join(project_path, self.tool.rel_build_path)
+        build_binary_path = os.path.join(project_path, self.tool.rel_build_hde_path if opts.hde else self.tool.rel_build_ftp_path)
+        build_str = 'build=hde' if opts.hde else ''
+        # no products specified means all products for project name
+        project_name = os.path.basename(project_path)
+        products, ue = self.tool.get_build_products(self._split_option(opts.product), project_name)
+        if not products: raise CmdException('cannot determine the products from %s, please specify using -p.' % project_name)
+        self.tool.print_('build total %d products: %s,   ' % (len(products), products))
+        error_occured = False
+        if opts.clean: self._runcmd('clean %s' % project_path)
+        if opts.not_build:
+            if not output_paths: self.tool.print_('no output path setting.')
+            else:
+                dest_dir_name = '%s_%s' % (opts.name or os.path.basename(project_path), products[0])
+                self._copy_binary(output_paths, project_path, build_binary_path, dest_dir_name, opts.backup)
+            return
+        for product in products:
+            if len(args) > 1:
+                partial_builds = self._parse_cpu_num(args[1])
+                if not partial_builds: raise CmdException('cannot detect partial builds from %s' % args[1])
+                self.tool.print_('partial builds: %s' % str(partial_builds))
+                is_partial_build = True
+            else:
+                partial_builds = ['all all=all']
+                is_partial_build = False
+
+            for partial_build in partial_builds:
+                build_start_time = time.time()
+                asm_out = 'asmout=on' if opts.asm else ''
+                build_cmd = 'scons %s product=%s %s -j%s %s quick=yes' % (partial_build, product.upper(), build_str, opts.cpu_num, asm_out)
+                self.tool.print_('start build "%s"...' % build_cmd)
+                if opts.hde or opts.window:
+                    WinCmd.cmd(build_cmd, build_cmd_path, showcmdwin = True, wait = True, retaincmdwin = True)
+                else:
+                    WinCmd.del_dir(build_binary_path)
+                    temp_build_file = self.tool.get_temp_build_file(project_path)
+                    if os.path.isfile(temp_build_file): WinCmd.del_file(temp_build_file)
+                    start_time = time.time()
+                    WinCmd.cmd('%s >> %s' % (build_cmd, temp_build_file), build_cmd_path, showcmdwin = False)
+                    elapse_time = time.time() - start_time
+                    #self.tool.print_('Output temp log file: %s' % temp_build_file)  # for debug
+                    build_result = self.tool.parse_build_logs(temp_build_file)
+                    build_success, build_msg = build_result[0], build_result[1]
+                    if build_success:
+                        self.tool.print_('[PASS]%s' % build_msg)
+                    else:
+                        self.tool.print_('[Error!!!!!!!!!!!]%s' % build_msg)
+                        if len(build_result) > 2:
+                            for error_line in build_result[2]:
+                                self.tool.print_('%s' % error_line)
+                        continue
+                    if output_paths:
+                        dest_dir_name = '%s_%s' % (opts.name or os.path.basename(project_path), product)
+                        self._copy_binary(output_paths, project_path, build_binary_path, dest_dir_name, opts.backup)
+                build_elapse_time = time.time() - build_start_time
+                time_str = '%ds' % build_elapse_time if build_elapse_time < 60 else '%dm%ds' % (int(build_elapse_time/60), build_elapse_time%60)
+                self.tool.print_('build %s done after %s!' % (product, time_str))
+                self.tool.print_('#'*60)
+        if error_occured: self.tool.print_('Error Occured! Please take care!!!')
+
+    @options([make_option("-p", "--product", action = "store", type = "string", dest = "product", default = "", help = "nr or nbiot"),
+              make_option("-d", "--hde", action = "store_true", dest = "hde", default = False, help = "build hde or target"),
+              make_option("-u", "--ut", action = "store_true", dest = "ut", default = False, help = "build unittest"),
+              make_option("-c", "--ct", action = "store_true", dest = "ct", default = False, help = "build comptest"),
+              make_option("-n", "--name", action = "store", type = "string", dest = "name", default = "", help = "binary path name"),
+              make_option("-j", "--cpu_num", action = "store", type = "string", dest = "cpu_num", default = "8", help = "cpu num used"),
+              make_option("-w", "--window", action = "store_true", dest = "window", default = False, help = "compile in window and wait"),
+              make_option("-1", "--backup", action = "store_true", dest = "backup", default = False, help = "backup old binary first when copy"),
+              make_option("-b", "--binary", action = "store_true", dest = "binary", default = False, help = "output to binary folder, shortcut for -o user"),
+              make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output path, path1|path2"),
+              make_option("-0", "--not_build", action = "store_true", dest = "not_build", default = False, help = "do not actually build, may use to move binary only")],
+             "[-p PRODUCT] [-d] [-u] [-c] [-b] [-0] [-n name] [-w] [-j 8] [-1] [-o bin_path1|bin_path2] project_path")
     @min_args(1)
     def do_build(self, args, opts = None):
         project_path, output_paths = args[0], self._split_option(opts.output)
@@ -458,68 +542,53 @@ class CmdLine(CmdLineWithAbbrev):
             output_paths.append(output_path)
         build_cmd_path = os.path.join(project_path, self.tool.rel_build_path)
         build_binary_path = os.path.join(project_path, self.tool.rel_build_hde_path if opts.hde else self.tool.rel_build_ftp_path)
-        build_str = 'build=hde' if opts.hde else ''
-        rats = [''] if not opts.rat else self._split_option(opts.rat)
-        if 'all' in rats: rats = ['FDD', 'TDD']
-        # no products specified means all products for project name
-        project_name = os.path.basename(project_path)
-        products, ue = self.tool.get_build_products(self._split_option(opts.product), project_name)
-        if not products: raise CmdException('cannot determine the products from %s, please specify using -p.' % project_name)
-        self.tool.check_product_rats(project_name, rats)
-        self.tool.print_('build total %d products: %s,   ' % (len(products), products) +
-                         ('No RAT specified!!!' if rats == [''] else 'RATs %d: %s' % (len(rats), rats)))
+        if opts.hde:
+            build_str = 'build=hde'
+        elif opts.ut:
+            build_str = 'build=unittest'
+        elif opts.ct:
+            build_str = 'build=comptest'
+        else:
+            build_str = ''
+        products = [opts.product] if opts.product else ['NR5G']
         error_occured = False
-        if opts.clean: self._runcmd('clean %s' % project_path)
         if opts.not_build:
             if not output_paths: self.tool.print_('no output path setting.')
             else:
-                product, rat = products[0], rats[0]
-                dest_dir_name = '%s_%s%s' % (opts.name or os.path.basename(project_path), product, '_'+rat if rat else '')
+                dest_dir_name = '%s_%s' % (opts.name or os.path.basename(project_path), products[0])
                 self._copy_binary(output_paths, project_path, build_binary_path, dest_dir_name, opts.backup)
             return
         for product in products:
-            if len(args) > 1:
-                partial_builds = self._parse_cpu_num(args[1])
-                if not partial_builds: raise CmdException('cannot detect partial builds from %s' % args[1])
-                self.tool.print_('partial builds: %s' % str(partial_builds))
-                is_partial_build = True
+            build_start_time = time.time()
+            build_cmd = 'scons all product=%s %s -j%s quick=yes' % (product.upper(), build_str, opts.cpu_num)
+            self.tool.print_('start build "%s"...' % build_cmd)
+            if build_str or opts.window:
+                WinCmd.cmd(build_cmd, build_cmd_path, showcmdwin = True, wait = True, retaincmdwin = True)
             else:
-                partial_builds = ['all all=all']
-                is_partial_build = False
-
-            for rat in rats:
-                for partial_build in partial_builds:
-                    build_start_time = time.time()
-                    asm_out = 'asmout=on' if opts.asm else ''
-                    build_cmd = 'scons %s product=%s %s %s -j%s %s quick=yes' % (partial_build, product.upper(), 'rat='+rat if rat else '', build_str, opts.cpu_num, asm_out)
-                    self.tool.print_('start build "%s"...' % build_cmd)
-                    if opts.hde or opts.window:
-                        WinCmd.cmd(build_cmd, build_cmd_path, showcmdwin = True, wait = True, retaincmdwin = True)
-                    else:
-                        WinCmd.del_dir(build_binary_path)
-                        temp_build_file = self.tool.get_temp_build_file(project_path)
-                        if os.path.isfile(temp_build_file): WinCmd.del_file(temp_build_file)
-                        start_time = time.time()
-                        WinCmd.cmd('%s >> %s' % (build_cmd, temp_build_file), build_cmd_path, showcmdwin = False)
-                        elapse_time = time.time() - start_time
-                        #self.tool.print_('Output temp log file: %s' % temp_build_file)  # for debug
-                        build_result = self.tool.parse_build_logs(temp_build_file)
-                        build_success, build_msg = build_result[0], build_result[1]
-                        if build_success:
-                            self.tool.print_('[PASS]%s' % build_msg)
-                        else:
-                            self.tool.print_('[Error!!!!!!!!!!!]%s' % build_msg)
-                            if len(build_result) > 2:
-                                for error_line in build_result[2]:
-                                    self.tool.print_('%s' % error_line)
-                            continue
-                        if output_paths:
-                            dest_dir_name = '%s_%s%s' % (opts.name or os.path.basename(project_path), product, '_'+rat if rat else '')
-                            self._copy_binary(output_paths, project_path, build_binary_path, dest_dir_name, opts.backup)
-                    build_elapse_time = time.time() - build_start_time
-                    time_str = '%ds' % build_elapse_time if build_elapse_time < 60 else '%dm%ds' % (int(build_elapse_time/60), build_elapse_time%60)
-                    self.tool.print_('build %s %s done after %s!' % (product, rat, time_str))
-                    self.tool.print_('#'*60)
+                WinCmd.del_dir(build_binary_path)
+                temp_build_file = self.tool.get_temp_build_file(project_path)
+                if os.path.isfile(temp_build_file): WinCmd.del_file(temp_build_file)
+                start_time = time.time()
+                WinCmd.cmd('%s >> %s' % (build_cmd, temp_build_file), build_cmd_path, showcmdwin = False)
+                elapse_time = time.time() - start_time
+                #self.tool.print_('Output temp log file: %s' % temp_build_file)  # for debug
+                build_result = self.tool.parse_build_logs(temp_build_file)
+                build_success, build_msg = build_result[0], build_result[1]
+                if build_success:
+                    self.tool.print_('[PASS]%s' % build_msg)
+                else:
+                    self.tool.print_('[Error!!!!!!!!!!!]%s' % build_msg)
+                    if len(build_result) > 2:
+                        for error_line in build_result[2]:
+                            self.tool.print_('%s' % error_line)
+                    continue
+                if output_paths:
+                    dest_dir_name = '%s_%s' % (opts.name or os.path.basename(project_path), product)
+                    self._copy_binary(output_paths, project_path, build_binary_path, dest_dir_name, opts.backup)
+            build_elapse_time = time.time() - build_start_time
+            time_str = '%ds' % build_elapse_time if build_elapse_time < 60 else '%dm%ds' % (int(build_elapse_time/60), build_elapse_time%60)
+            self.tool.print_('build %s done after %s!' % (product, time_str))
+            self.tool.print_('#'*60)
         if error_occured: self.tool.print_('Error Occured! Please take care!!!')
 
     @options([make_option("-i", "--pieces", action = "store", type = "string", dest = "pieces", default = "", help = "piece index, 0~total n, example: 1|3"),
@@ -534,7 +603,7 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-r", "--from_remote_run1", action = "store_true", dest = "from_remote_run1", default = False, help = "split logs from remote run1, output to run_result"),
               make_option("-x", "--remove_size", action = "store", type = "string", dest = "remove_size", default = "200", help = "remove files that size smaller than size, default: 200 KBytes)"),
               make_option("-n", "--last_number", action = "store", type = "string", dest = "last_number", default = "1", help = "result from run last number, 0 means all run"),
-             ], "[-p path] [-i pieces] [-l last_pieces] [-s piece_size] [-z] [-a] [-d] [-x] [-b] [-r] [-n last_number] file1 [file2 ...]")
+             ], "[-p path] [-i pieces] [-l last_pieces] [-s piece_size] [-z] [-a] [-d] [-x] [-b] [-r] [-n last_number] {files(regex)}")
     @min_args(1)
     def do_split_files(self, args, opts = None):
         pieces = [int(p) for p in self._split_option(opts.pieces)] if opts.pieces else []
@@ -577,6 +646,7 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-c", "--excel", action = "store_true", dest = "excel", default = False, help = "excel file, split files always contain the header"),
               make_option("-b", "--bytes_align", action = "store_true", dest = "bytes_align", default = False, help = "split files in absolutely bytes alignment, not line break alignment"),
              ], "[-p path] [-r regex] [-s piece_size] [-x] [-b] [-0] {files(regex)}")
+    @min_args(1)
     def do_search(self, args, opts = None):
         files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
         for f in files:
@@ -587,21 +657,26 @@ class CmdLine(CmdLineWithAbbrev):
             else:
                 self.tool.print_('Index %d/%d found string (%s) in file %s.' % (index, total_n, opts.regex, os.path.basename(f)))
                 if not opts.not_split:
-                    self._runcmd('split_files -s %s -p %d %s %s %s' % (opts.piece_size, index, '-x' if opts.excel else '', '-b' if opts.bytes_align else '', f))
+                    self._runcmd('split_files -s %s -i %d %s %s %s' % (opts.piece_size, index, '-x' if opts.excel else '', '-b' if opts.bytes_align else '', f))
                 break
+        if not files: self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
 
     @options([make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
              ], "[-p path] {files(regex)}")
+    @min_args(1)
     def do_combine(self, args, opts = None):
         files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
-        files.sort()
-        output_file_name, output_file_ext = os.path.splitext(files[0])
-        output_file = '%s_combine%s' % (output_file_name, output_file_ext)
-        with open(output_file, 'w') as f_write:
-            for f in files:
-                f_write.write(open(f).read())
-                f_write.write('\r\n')
-        self.tool.print_('combine file to %s successfully!' % os.path.basename(output_file))
+        if files:
+            files.sort()
+            output_file_name, output_file_ext = os.path.splitext(files[0])
+            output_file = '%s_combine%s' % (output_file_name, output_file_ext)
+            with open(output_file, 'w') as f_write:
+                for f in files:
+                    f_write.write(open(f).read())
+                    f_write.write('\r\n')
+            self.tool.print_('combine file to %s successfully!' % os.path.basename(output_file))
+        else:
+             self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
 
     @options([make_option("-d", "--dsp_cores", action = "store", type = "string", dest = "dsp_cores", default = "", help = "dsp core number, e.g. 4.1|2, default means all"),
               make_option("-m", "--hlc_cores", action = "store", type = "string", dest = "hlc_cores", default = "", help = "hlc core number, e.g. 4.1|2, default means all"),
@@ -609,7 +684,7 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-0", "--only_dedicated", action = "store_true", dest = "only_dedicated", default = False, help = "only_dedicated core extraced, default is all, include dsp,hlc,umb,etc."),
               make_option("-z", "--latest", action = "store_true", dest = "latest", default = False, help = "latest file with all found files"),
               make_option("-x", "--remove_size", action = "store", type = "string", dest = "remove_size", default = "200", help = "remove files that size smaller than size, default: 200 KBytes)"),
-             ], "[-p path] [-d dsp_cores] [-h hlc_cores] [-0] [-z] [-x remove_size] file1 [file2 ...]")
+             ], "[-p path] [-d dsp_cores] [-h hlc_cores] [-0] [-z] [-x remove_size] {files(regex)}")
     @min_args(1)
     def do_extract_log(self, args, opts = None):
         re_files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
@@ -625,7 +700,7 @@ class CmdLine(CmdLineWithAbbrev):
                 self.tool.print_('%d files extracted (%d files removed smaller than %s KBytes)!' % (len(result_files), len(all_result_files) - len(result_files), opts.remove_size))
             else:
                 self.tool.print_('no files extracted from %s!' % (file))
-        if not re_files: self.tool.print_('no files found, please check the input param!')
+        if not re_files: self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
 
     @options([make_option("-v", "--verbose", action = "store_true", dest = "verbose", default = False, help = "list all files verbosely"),
               make_option("-f", "--to_file", action = "store_true", dest = "to_file", default = False, help = "result to file"),
@@ -1019,31 +1094,24 @@ class CmdLine(CmdLineWithAbbrev):
             self.tool.print_('vnc connected %d machines!' % len(machines))
 
     @options([make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
-              make_option("-m", "--mac", action = "store", type = "string", dest = "hlc", default = "", help = "hlc files, re, 0 means files in args[0]"),
+              make_option("-o", "--only", action = "store_true", dest = "only", default = False, help = "dsp log only"),
+              make_option("-d", "--dsp", action = "store_true", dest = "dsp", default = False, help = "dsp files"),
               make_option("-f", "--force", action = "store_true", dest = "force", default = False, help = "force gen log, do not check file exist"),
               make_option("-z", "--latest", action = "store_true", dest = "latest", default = False, help = "latest file with all found files"),
               make_option("-0", "--no_sort", action = "store_true", dest = "no_sort", default = False, help = "do not sort the logs"),
-             ], "[-0] [-p path] [-m mac_files(re)] [-z] [-f] dsp_files(re)")
+             ], "[-0] [-p path] [-d] [-o] [-z] [-f] {files(regex)}")
+    @min_args(1)
     def do_gen_log(self, args, opts = None):
         for tool_file in ['loganalyse.exe', 'loganalyse.dll']:
             self.tool.check_file_exist(os.path.join(opts.path, tool_file))
         if not opts.force: self.tool.check_file_exist(os.path.join(opts.path, 'tm500defs.dll'))
-        hlc_files, dsp_files = [], []
-        if opts.hlc:
-            if opts.hlc == '0':  # the same as dsp files
-                if len(args) == 0: raise CmdException('invalid -m option without args')
-                hlc_files = self.tool.get_re_files(os.path.join(opts.path, args[0]))
-            else:
-                hlc_files = self.tool.get_re_files(os.path.join(opts.path, opts.hlc))
-        if len(args):
-            dsp_files = self.tool.get_re_files(os.path.join(opts.path, args[0]))
-            if opts.hlc and opts.hlc != '0': dsp_files = list(set(dsp_files) - set(hlc_files))
-        if hlc_files:
-            self.tool.log_format(hlc_files, domain = 'hlc', no_sort = opts.no_sort, latest = opts.latest)
-            self.tool.print_('change %d hlc files log format successfully!' % len(hlc_files))
-        if dsp_files:
-            self.tool.log_format(dsp_files, domain = 'dsp', no_sort = opts.no_sort, latest = opts.latest)
-            self.tool.print_('change %d dsp files log format successfully!' % len(dsp_files))
+        files = self.tool.get_re_files(os.path.join(opts.path, args[0]))
+        if not (opts.dsp and opts.only):
+            self.tool.log_format(files, domain = 'hlc', no_sort = opts.no_sort, latest = opts.latest)
+            self.tool.print_('change %d hlc files log format successfully!' % len(files))
+        if opts.dsp:
+            self.tool.log_format(files, domain = 'dsp', no_sort = opts.no_sort, latest = opts.latest)
+            self.tool.print_('change %d dsp files log format successfully!' % len(files))
         self.tool.print_('if the output file is zero length, try with -0 no sort option.')
 
     @options([make_option("-f", "--farm", action = "store", type = "string", dest = "farm", default = "", help = "farm machine, ip: FARM14: 10.120.163.114"),
@@ -1205,6 +1273,13 @@ class CmdLine(CmdLineWithAbbrev):
             self.tool.show_run_result(last_number, opts.all, opts.remote_run1, opts.src_folder, opts.view)
         else:
             self.tool.show_last_html(opts.last_batch, opts.last_case, opts.remote_run1, opts.src_folder)
+
+    @options([make_option("-o", "--output_path", action = "store", type = "string", dest = "output_path", default = r"C:\wang\00.Work\04.result", help = "file output path"),
+             ], "[-o output_path] remote_run_number")
+    def do_remote_result(self, args, opts = None):
+        output_path = opts.output_path
+        self.tool.check_folder_exist(output_path)
+        self.tool.get_files_from_teamcity(args[0], output_path)
 
     @options([make_option("-r", "--readonly", action = "store_true", dest = "readonly", default = False, help = "read the current RUN1"),
              ], "[-r] [run1_folder]")
@@ -1465,7 +1540,7 @@ class CmdLine(CmdLineWithAbbrev):
         else:
             raise CmdException('cmd "%s" not valid!' % cmd)
         self.tool.print_('%s files finished.' % cmd)
-        
+
     @options([make_option("-v", "--dynamic_view", action = "store", type = "string", dest = "dynamic_view", default = "Z:", help = "dynamic view path"),
              ], "[-v dynamic_view_path] project_path")
     @min_args(1)
@@ -1778,10 +1853,11 @@ class CmdLine(CmdLineWithAbbrev):
         if not opts.only_update: self._runcmd('rename')
 
     @options([make_option("-g", "--git_path", action = "store", type = "string", dest = "git_path", default = r"C:\wang\02.Git\tm_tests\batch", help = "git path"),
-              make_option("-p", "--path", action = "store", type = "string", dest = "batch_path", default = r"C:\wang\00.Work\NR5G\test\batch", help = "batch path"),
+              make_option("-p", "--path", action = "store", type = "string", dest = "batch_path", default = r"C:\wang\03.Batch", help = "batch path"),
+              make_option("-b", "--backup", action = "store_true", dest = "backup", default = False, help = "backup the old batch"),
              ], "")
     def do_update_batch(self, args, opts = None):
-        batches = self.tool.update_batch(opts.git_path, opts.batch_path)
+        batches = self.tool.update_batch(opts.git_path, opts.batch_path, opts.backup)
         self.tool.print_('updated %d batches to %s successfully!' % (len(batches), opts.batch_path))
 
     @options([], "")
@@ -2311,14 +2387,6 @@ class TestTool:
             self.print_('deleted folder %s' % subfolders_mtime[i][1])
         return delete_num
 
-    def check_product_rats(self, project_name, rats = ''):
-        ue = self._get_ue_from_project_name(project_name)
-        # do not check mue ????
-        if ue in ['cue', 'sue']:
-            if rats and rats != ['']: raise CmdException('product %s from %s: invalid rats %s' % (ue, project_name, str(rats)))
-        #elif ue == 'mue':
-        #    if not rats or rats == ['']: raise CmdException('product %s from %s: invalid rats %s' % (ue, project_name, str(rats)))
-
     def _get_ue_from_project_name(self, project_name):
         ue_options = ['sue', 'mue', 'cue']
         if not project_name: return ''
@@ -2593,7 +2661,6 @@ class TestTool:
         flags = {'dsp': '-ddsp', 'hlc': '-dhlc', 'umbra': '-dumbra'}
         if not domain in flags: raise CmdException('invalid domain %s' % domain)
         flag = flags[domain]
-        sort_flag = '' if no_sort else ' | sort '
         if latest and len(files) > 1:
             files_mtime = [(os.stat(f).st_mtime, f) for f in files]
             files_mtime.sort(reverse = True)
@@ -2602,7 +2669,9 @@ class TestTool:
             self.check_file_exist(f)
             src_f = os.path.basename(f)
             dest_f = '%s_%s.txt' % (os.path.splitext(src_f)[0], domain)
-            WinCmd.cmd(r'loganalyse.exe %s %s %s > %s' % (flag, src_f, sort_flag, dest_f), os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
+            WinCmd.cmd(r'loganalyse.exe %s %s > %s' % (flag, src_f, dest_f), os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
+            if not no_sort:
+                WinCmd.cmd(r'sort /REC 65535 %s > nul' % dest_f, os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
 
     def gen_cpu_symbol(self, project_or_bin_path, cpu_num, reg_value = '', c66cpu_type = False):
         ti_tool = 'nm6x.exe'
@@ -4568,6 +4637,36 @@ class TestTool:
         remain_files_num = total_files_num - download_files_num - files_num_already_exist
         if remain_files_num: self.print_('Caution: %d files cannot be downloaded!!!' % remain_files_num)
 
+    def _download_file(self, file_url, target_file):
+        content = None
+        block_size = 10*1024*1024  # read 10M bytes at a time
+        try:
+            self.print_('get: %s' % file_url)
+            response = urllib2.urlopen(file_url, timeout = 10)
+            content = response.read(block_size)
+        except Exception as e:
+            self.print_('open html error! "%s", %s' % (file_url, e))
+            return False
+        if not content is None:
+            with open(target_file, "wb") as f_write:
+                while content:
+                    f_write.write(content)
+                    content = response.read(block_size)
+        return True
+
+    def get_files_from_teamcity(self, run_number, output_path):
+        # https://emea-teamcity.aeroflex.corp/repository/download/RemoteRun_BinariesTestNr5g_BinariesRun/1264919:id/Run1.zip
+        file_url = r'https://emea-teamcity.aeroflex.corp/repository/download/RemoteRun_BinariesTestNr5g_BinariesRun/%s:id/Run1.zip' % run_number
+        filename = os.path.splitext(os.path.basename(file_url))
+        target_file = os.path.join(output_path, '%s_%s%s' % (filename[0], run_number, filename[1]))
+        status = self._download_file(file_url, target_file)
+        if status:
+            self.check_file_exist(target_file)
+            dest_dir = os.path.splitext(target_file)[0]
+            if not os.path.isdir(dest_dir): os.makedirs(dest_dir)
+            ZipUtil.unzip(target_file, dest_dir)
+            self.print_('download run1.zip (%d) to folder: %s' % (run_number, dest_dir))
+
     def _rrc_file(self, file_name_id):
         return self.get_temp_filename(suffix = '_rrc_%s' % file_name_id)
 
@@ -4625,7 +4724,7 @@ class TestTool:
         else:
             self.print_('[Error] cannot decode the string. Please check.')
 
-    def update_batch(self, git_path, batch_path):
+    def update_batch(self, git_path, batch_path, backup = False):
         WinCmd.cmd('git pull', git_path, showcmdwin = True, wait = True, retaincmdwin = False)
         sanity_batches = [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt',
                           r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt',
@@ -4637,10 +4736,11 @@ class TestTool:
                    r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
                    r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL_120Khz.txt',
                    r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL.txt'] + sanity_batches
-        bak_dir = os.path.join(os.path.dirname(batch_path), 'batch_bak')
+        if backup:
+            bak_dir = os.path.join(os.path.dirname(batch_path), 'batch_bak')
+            WinCmd.copy_dir(batch_path, bak_dir, empty_dest_first = True, include_src_dir = False)
+            self.print_('backup batches to folder: %s' % bak_dir)
         sanity_dir = os.path.join(batch_path, 'sanity')
-        WinCmd.copy_dir(batch_path, bak_dir, empty_dest_first = True, include_src_dir = False)
-        self.print_('backup batches to folder: %s' % bak_dir)
         source_batches = [os.path.join(git_path, b) for b in batches]
         WinCmd.copy_files(source_batches, batch_path, empty_dir_first = False)
         sanity_source_batches = [os.path.join(batch_path, b) for b in sanity_batches]

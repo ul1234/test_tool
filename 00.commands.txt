@@ -83,6 +83,8 @@ scons nbiot_l0_comptest build=comptest
 
 scons nbiot_l0_dl_mob_mdl_unittest build=unittest
 
+fileziptool.exe zip D:\Projects\swang2_view_nokia_2bwp_int_1\tm_build_system\build\ftp black_bin_181128_1 black_bin_181130_1
+
 
 r */21457 -1 swang2_view_cue_tot_feature_1_nbiot -s RAV84-NB -u && cr
 r */21461 -1 swang2_view_cue_tot_feature_1_nbiot -s RAV84-NB -u && cr && cr -f "slog.*.dat
