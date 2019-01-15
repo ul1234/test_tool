@@ -16,7 +16,7 @@ from tsms import TSMS
 from proxy import WindowsProxySetting
 from check import CodeCheck
 from tc import TC
-from hook_tc import HookToolCacheManager
+from hook_tc import HookToolCacheManager, TeamcityIni
 # import readline
 
 ######################## command line interface ##########################
@@ -84,7 +84,7 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('copy_result', 'cr'), ('cmp_rslt', 'cmrlt'), ('open_soft', 'soft'), ('msg_identify', 'msg'), ('copy_change_files', 'cchange'),
               ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_cases', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
               ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'urav'), ('build_py', 'bpy'),
-              ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('remote_run', 'rr'),
+              ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('remote_run_sanity', 'rr'),
               ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'), ('EOF', 'q'), ('help', 'h')]
 
     MONITOR_CMD = [] #['env', 'run_batch', 'build', 'update_rav']
@@ -1224,16 +1224,16 @@ class CmdLine(CmdLineWithAbbrev):
         self.tc.gen_all_upload_files(mk)
         self.tc.run_tc()
 
-    @options([], "project_path")
+    @options([make_option("-b", "--select_batches_key", action = "store", type = "string", dest = "select_batches_key", default = "", help = "sanity batches: 15k|120k|basic|2cell"),
+              make_option("-1", "--cell_1_batch_one_run", action = "store_true", dest = "cell_1_batch_one_run", default = False, help = "cell 1 batches, run in one go"),
+              make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
+             ], "[-b batches] [-1] [-d] project_path  (default: 3 runs (2cell, basic, 15k+120k))")
     @min_args(1)
-    def do_remote_run(self, args, opts = None):
+    def do_remote_run_sanity(self, args, opts = None):
         project_path = args[0]
         WinCmd.check_folder_exist(project_path)
         self._set_default_project_path(project_path)
-        remote_run_tool = self.tool.get_remote_run(project_path)
-        hook_tool = HookToolCacheManager(remote_run_tool)
-        hook_tool.run()
-        self.tool.print_('remote run end')
+        self.tool.teamcity_remote_run(project_path, opts.select_batches_key, opts.cell_1_batch_one_run, opts.debug)
 
     @options([make_option("-c", "--config_pattern", action = "store", type = "string", dest = "config_pattern", default = "", help = "re config pattern to filter config files"),
              ], "[-c pattern]")
@@ -2079,6 +2079,22 @@ class TestTool:
         self.signal_folder = os.path.join(self.transfer_folder, 'signal')
         self.remote_copy_folder = os.path.join(self.transfer_folder, 'clipboard')
         if clear_signals: self.clear_signals()
+        # teamcity
+        self.sanity_batch_path = r'C:\wang\03.Batch\sanity'
+        self.sanity_batches_config = {'2cell': '2CELL4G5G', 'default': ''}
+        self.sanity_batches_dict = {'2cell': [r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
+                                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_120KHz_Basic.txt',
+                                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
+                                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt'],
+                                    '15k': [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt'],
+                                    '120k': [r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt'],
+                                    'basic': [r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt']}
+        self.sanity_batches = reduce(list.__add__, self.sanity_batches_dict.values(), [])
+        self.other_batches = [r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
+                              r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
+                              r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL_120Khz.txt',
+                              r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL.txt']
+        self.all_batches = self.sanity_batches + self.other_batches
 
     def reload_farm_path(self, farm_base_path = 'C:\\'):
         self.base_path = farm_base_path
@@ -2118,13 +2134,13 @@ class TestTool:
 
     def get_logcombuilder(self, project_path):
         return self._get_tool(project_path, self.log_rel_paths, tool_name = 'logcombuilder.pyw')
-    
+
     def get_remote_run(self, project_path):
         return self._get_tool(project_path, self.teamcity_rel_paths, tool_name = 'remote_run.pyw')
-        
+
     def get_presub(self, project_path):
         return self._get_tool(project_path, self.teamcity_rel_paths, tool_name = 'presub.pyw')
-        
+
     def get_temp_build_file(self, project_path, unique = False):
         build_temp_path = os.path.join(project_path, self.rel_build_temp_path)
         if not os.path.isdir(build_temp_path): WinCmd.make_dir(build_temp_path)
@@ -4766,27 +4782,45 @@ class TestTool:
 
     def update_batch(self, git_path, batch_path, backup = False):
         WinCmd.cmd('git pull', git_path, showcmdwin = True, wait = True, retaincmdwin = False)
-        sanity_batches = [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt',
-                          r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt',
-                          r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt',
-                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
-                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_120KHz_Basic.txt',
-                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
-                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt']
-        batches = [r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
-                   r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
-                   r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL_120Khz.txt',
-                   r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL.txt'] + sanity_batches
         if backup:
             bak_dir = os.path.join(os.path.dirname(batch_path), 'batch_bak')
             WinCmd.copy_dir(batch_path, bak_dir, empty_dest_first = True, include_src_dir = False)
             self.print_('backup batches to folder: %s' % bak_dir)
         sanity_dir = os.path.join(batch_path, 'sanity')
-        source_batches = [os.path.join(git_path, b) for b in batches]
+        source_batches = [os.path.join(git_path, b) for b in self.all_batches]
         WinCmd.copy_files(source_batches, batch_path, empty_dir_first = False)
-        sanity_source_batches = [os.path.join(batch_path, b) for b in sanity_batches]
+        sanity_source_batches = [os.path.join(batch_path, b) for b in self.sanity_batches]
         WinCmd.copy_files(sanity_source_batches, sanity_dir, empty_dir_first = False)
-        return batches
+        return self.all_batches
+
+    def teamcity_remote_run(self, project_path, select_batches_key = '', cell_1_batch_one_run = False, debug_output = False):
+        remote_run_tool = self.get_remote_run(project_path)
+        teamcity_ini_file = os.path.join(os.path.dirname(remote_run_tool), 'settings.ini')
+        teamcity_ini = TeamcityIni(teamcity_ini_file)
+        if select_batches_key:
+            select_keys = []
+            for key in select_batches_key.split('|'):
+                if key not in self.sanity_batches_dict.keys(): raise CmdException('invalid select batches %s' % key)
+                select_keys.append(key)
+        else:
+            select_keys = self.sanity_batches_dict.keys()
+        runs = []
+        if '2cell' in select_keys:
+            runs.append((self.sanity_batches_dict['2cell'], self.sanity_batches_config['2cell']))
+            select_keys.remove('2cell')
+        if not cell_1_batch_one_run and 'basic' in select_keys:
+            runs.append((self.sanity_batches_dict['basic'], self.sanity_batches_config['default']))
+            select_keys.remove('basic')
+        if select_keys: runs.append((reduce(list.__add__, [self.sanity_batches_dict[k] for k in select_keys], []), self.sanity_batches_config['default']))
+        self.print_('Total %d runs.' % len(runs))
+        for i, (run, config) in enumerate(runs):
+            self.print_('Start to run %d: (%s) %s ...' % (i+1, config, run))
+            batches = [os.path.join(self.sanity_batch_path, r) for r in run]
+            teamcity_ini.set_batches(batches, config)
+            hook_tool = HookToolCacheManager(remote_run_tool, debug_output = debug_output)
+            hook_tool.run()
+            #raw_input(r'press any key to continue...')
+            self.print_('End submit running %d.' % (i+1))
 
     @use_system32_on_64bit_system
     def fix_remote_copy_paste(self):

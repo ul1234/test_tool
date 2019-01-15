@@ -2,10 +2,44 @@
 # -*- coding: utf-8 -*-
 
 import wx
-import os, sys, traceback
+import os, sys, traceback, ConfigParser
 from decorator import thread_func, hook_func
 from hook_tool import HookTool
 from wincmd import WinCmd
+
+
+class TeamcityIni:
+    def __init__(self, ini_file):
+        WinCmd.check_file_exist(ini_file)
+        self.ini = ConfigParser.RawConfigParser()
+        self.ini.optionxform = lambda option: option  # preserve the lower/upper case
+        self.ini_file = ini_file
+        self.ini.read(ini_file)
+        self.set_default()
+
+    def set_default(self):
+        self.ini.set('Settings', '_selectedbuildtype', 'MK4.X')
+        self.ini.set('AddBatchDialog', 'umbra-update', 'False')
+        self.ini.set('ButtonPanel', 'skip-file-selection', 'True')
+        self.ini.set('PathSelectPanel', 'ftp-folder', r'tm_build_system\build\ftp')
+        self.write_back()
+
+    def set_batches(self, batches, config = ''):
+        # batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt:MK4.X::RemoteRun_BinariesTestNr5g_BinariesRun:Any
+        # batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt:MK4.X:2CELL4G5G:RemoteRun_BinariesTestNr5g_BinariesRun:Any
+        selected_batches = []
+        selected_folders = []
+        for batch in batches:
+            batch_path, batch_name = os.path.dirname(batch), os.path.basename(batch)
+            selected_batches.append(':'.join([batch_name, 'MK4.X', config, 'RemoteRun_BinariesTestNr5g_BinariesRun', 'Any']))
+            selected_folders.append(batch_path)
+        self.ini.set('Settings', '_selectedBatchFiles', ','.join(selected_batches))
+        self.ini.set('Settings', '_selectedBatchFolders', ','.join(selected_folders))
+        self.write_back()
+
+    def write_back(self):
+        with open(self.ini_file, 'w+') as f_write:
+            self.ini.write(f_write)
 
 
 class HookToolCacheManager(HookTool):
@@ -13,19 +47,18 @@ class HookToolCacheManager(HookTool):
         self.remote_run_tool = remote_run_tool
         path = os.path.dirname(os.path.abspath(__file__))
         self.rules = [[self.remote_run_tool, '', 'CacheManager().run(__file__)', "c = CacheManager(); import sys; sys.path.append(r'%s'); from hook_tc import hook; import os; hook.hook_cache_manager(c, os.path.abspath(__file__), %s); c.run(__file__)" % (path, debug_output)]];
-        HookTool.__init__(self, self.rules)
+        HookTool.__init__(self, self.rules, debug_output = debug_output)
 
     def run(self):
         try:
             self.replace_files_with_rules()
             tool_path, tool_name = os.path.split(self.remote_run_tool)
-            WinCmd.cmd(r'python "%s"' % tool_name, tool_path, showcmdwin = True, wait = False)
+            WinCmd.cmd(r'python "%s"' % tool_name, tool_path, showcmdwin = True, wait = True, retaincmdwin = False)
         except Exception as e:
             print('EXCEPTION: %s\n' % (e))
             print(traceback.format_exc())
         finally:
-            #self.restore_changed_files()
-            pass
+            self.restore_changed_files()
 
 class HookToolRemoteRun(HookTool):
     def __init__(self, teamcity_folder):
@@ -74,7 +107,7 @@ class HookTc:
         self.print_('After the window opens, start to hook functions...')
         try:
             self._frame.Destroy = hook_func(self._frame.Destroy, before_func = self._hook_func_destroy)
-            self._panel.panelAddBatchDialog.onok = hook_func(self._panel.panelAddBatchDialog.onok, after_func = self._hook_func_add_batches)
+            #self._panel.panelAddBatchDialog.onok = hook_func(self._panel.panelAddBatchDialog.onok, after_func = self._hook_func_add_batches)
             #self._panel.panelSelectPath.get_ftp_folder = hook_func(self._panel.panelSelectPath.get_ftp_folder, after_func = self._hook_func_get_ftp_folder)
             self._panel.resetWindow = hook_func(self._panel.resetWindow, after_func = self._hook_func_reset_window)
             self._panel.oncontinue(event = None)
@@ -86,22 +119,22 @@ class HookTc:
         self.print_('Before destroy the window, start to restore the changed files.')
         self.hook_remote_run.restore_changed_files()
 
-    def _hook_func_add_batches(self):
-        self.print_('before load batches, start to change the batches and folders.')
-        sys.path.append(os.path.join(self.teamcity_folder, '.cache', 'remote_run_internals', 'add_batch_dialog'))
-        self.print_('DEBUG: sys.path is %s' % str(sys.path))
-        from batch_info import BatchInfo
-        self._panel.panelAddBatchDialog.selectedBatchInfo = []
-        self._panel.panelAddBatchDialog.selectedFolders = []
-        for batch in self.batches:
-            batch_path, batch_name = os.path.dirname(batch), os.path.basename(batch)
-            self._panel.panelAddBatchDialog.selectedBatchInfo.append(BatchInfo(batch_name, 'MK4.X', 'RemoteRun_BinariesTestNr5g_BinariesRun', '2CELL4G5G'))
-            self._panel.panelAddBatchDialog.selectedFolders.append(batch_path)
-        self.print_('finish to change the batches and folders.')
+    #def _hook_func_add_batches(self):
+    #    self.print_('before load batches, start to change the batches and folders.')
+    #    sys.path.append(os.path.join(self.teamcity_folder, '.cache', 'remote_run_internals', 'add_batch_dialog'))
+    #    self.print_('DEBUG: sys.path is %s' % str(sys.path))
+    #    from batch_info import BatchInfo
+    #    self._panel.panelAddBatchDialog.selectedBatchInfo = []
+    #    self._panel.panelAddBatchDialog.selectedFolders = []
+    #    for batch in self.batches:
+    #        batch_path, batch_name = os.path.dirname(batch), os.path.basename(batch)
+    #        self._panel.panelAddBatchDialog.selectedBatchInfo.append(BatchInfo(batch_name, 'MK4.X', 'RemoteRun_BinariesTestNr5g_BinariesRun', '2CELL4G5G'))
+    #        self._panel.panelAddBatchDialog.selectedFolders.append(batch_path)
+    #    self.print_('finish to change the batches and folders.')
 
-    def _hook_func_get_ftp_folder(self):
-        self.print_('before get ftp folder, start to change the ftp folder.')
-        return self.ftp_folder
+    #def _hook_func_get_ftp_folder(self):
+    #    self.print_('before get ftp folder, start to change the ftp folder.')
+    #    return self.ftp_folder
 
     def hook_schedule_end(self):
         self.print_('scheduling have been finished. replace the Modal dialog.')

@@ -6,10 +6,11 @@ from wincmd import WinCmd
 
 
 class HookTool:
-    def __init__(self, rules = None):
+    def __init__(self, rules = None, debug_output = False):
         # [target_file, pattern to search, target line after pattern, string to replace]
         self.rules = rules
         self.changed_files = []
+        self.debug_output = debug_output
 
     def replace_files_with_rules(self, rules = None):
         rules = rules or self.rules
@@ -46,17 +47,22 @@ class HookTool:
             WinCmd.rename_files(target_file, bak_file, remove_dest_first = True)
             WinCmd.rename_files(tmp_file, target_file)
             self.changed_files.append(target_file)
-            WinCmd.print_('Changed file successfully: %s' % target_file)
+            self.print_('Changed file successfully: %s' % target_file)
         else:
-            WinCmd.print_('Warning: file %s no change.' % target_file)
+            self.print_('Warning: file %s no change.' % target_file, force_output = True)
 
     def restore_changed_files(self):
         for changed_file in self.changed_files:
             bak_file = '%s.bak' % changed_file
             WinCmd.check_file_exist(changed_file)
-            WinCmd.rename_files(bak_file, changed_file, remove_dest_first = True)
-            WinCmd.print_('Restore file successfully: %s' % changed_file)
+            if os.path.isfile(bak_file):
+                WinCmd.rename_files(bak_file, changed_file, remove_dest_first = True)
+                self.print_('Restore file successfully: %s' % changed_file)
         self.changed_files = []
+
+    def print_(self, msg, force_output = False):
+        if self.debug_output or force_output:
+            WinCmd.print_(msg)
 
 
 if __name__ == '__main__':
