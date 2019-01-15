@@ -1,7 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import os, time, subprocess
+import os, time, subprocess, sys
+from datetime import datetime
 import win32clipboard, win32con
 
 class WinCmd:
@@ -14,7 +15,7 @@ class WinCmd:
         os.rename(src_dir, dest_dir)
 
     @staticmethod
-    def rename_files(src_files, dest_files):
+    def rename_files(src_files, dest_files, remove_dest_first = False):
         def _check_files_exist(files, check_exist = True):
             result = True
             error_file = None
@@ -30,6 +31,7 @@ class WinCmd:
         result, error_file = _check_files_exist(src_files, check_exist = True)
         if not result: raise Exception('src file "%s" not exist before rename.' % error_file)
         for src_file, dest_file in zip(src_files, dest_files):
+            if remove_dest_first: WinCmd.del_file(dest_file)
             os.rename(src_file, dest_file)
         result, error_file = _check_files_exist(src_files, check_exist = False)
         if not result: raise Exception('src file "%s" cannot be successfully renamed.' % error_file)
@@ -129,8 +131,26 @@ class WinCmd:
         open(file, 'w').close()
 
     @staticmethod
+    def check_file_exist(filename, can_be_empty = False):
+        if not can_be_empty and not filename: raise Exception('file can not be empty: %s' % filename)
+        if filename and not os.path.isfile(filename): raise Exception('file not found: %s' % filename)
+
+    @staticmethod
+    def check_folder_exist(folder, can_be_empty = False):
+        if not can_be_empty and not folder: raise Exception('folder can not be empty: %s' % folder)
+        if folder and not os.path.isdir(folder): raise Exception('folder not found: %s' % folder)
+
+    @staticmethod
     def kill(process):
         WinCmd.cmd(r'taskkill /f /im %s.exe /T' % os.path.splitext(process)[0])
+
+    @staticmethod
+    def print_(str, output_time = True):
+        if output_time:
+            print('[%s]%s' % (datetime.now().strftime('%H:%M:%S'), str))
+        else:
+            print(str)
+        sys.stdout.flush()
 
     @staticmethod
     def MessageBox(text, title = 'Test Tool Monitor', style = 0):

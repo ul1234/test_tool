@@ -5,6 +5,7 @@ from optparse import OptionParser, make_option, OptParseError
 from glob import glob
 import os, re, sys, traceback, cmd, time, ConfigParser, urllib2, socket, threading, urllib, subprocess
 import win32api, win32gui, win32con
+from decorator import thread_func, use_system32_on_64bit_system
 from datetime import datetime, timedelta
 from wincmd import WinCmd
 from clipcomm import ClipComm, ZipUtil
@@ -15,30 +16,8 @@ from tsms import TSMS
 from proxy import WindowsProxySetting
 from check import CodeCheck
 from tc import TC
+from hook_tc import HookToolCacheManager
 # import readline
-
-
-######################## decorator ##########################
-def thread_func(time_delay = 0.01):
-    def _thread_func(func):
-        def __thread_func(*args, **kwargs):
-            def _func(*args):
-                time.sleep(time_delay)
-                func(*args, **kwargs)
-            threading.Thread(target = _func, args = tuple(args)).start()
-        return __thread_func
-    return _thread_func
-
-def use_system32_on_64bit_system(func):
-    def _func(*args, **kwargs):
-        import ctypes
-        k32 = ctypes.windll.kernel32
-        wow64 = ctypes.c_long(0)
-        k32.Wow64DisableWow64FsRedirection(ctypes.byref(wow64))
-        result = func(*args, **kwargs)
-        k32.Wow64EnableWow64FsRedirection(wow64)
-        return result
-    return _func
 
 ######################## command line interface ##########################
 class CmdException(Exception): pass
@@ -105,7 +84,7 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('copy_result', 'cr'), ('cmp_rslt', 'cmrlt'), ('open_soft', 'soft'), ('msg_identify', 'msg'), ('copy_change_files', 'cchange'),
               ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_cases', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
               ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'urav'), ('build_py', 'bpy'),
-              ('update_batch', 'ubatch'), ('build_lte', 'blte'),
+              ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('remote_run', 'rr'),
               ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'), ('EOF', 'q'), ('help', 'h')]
 
     MONITOR_CMD = [] #['env', 'run_batch', 'build', 'update_rav']
@@ -412,7 +391,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_build_py(self, args, opts = None):
         project_path = args[0]
-        self.tool.check_folder_exist(project_path)
+        WinCmd.check_folder_exist(project_path)
         self._set_default_project_path(project_path)
         project_name = os.path.basename(project_path)
         products, ue = self.tool.get_build_products(self._split_option(opts.product), project_name)
@@ -423,10 +402,10 @@ class CmdLine(CmdLineWithAbbrev):
         if not partial_builds: raise CmdException('cannot detect partial builds from %s' % args[1])
         self.tool.print_('partial builds: %s' % str(partial_builds))
         py_base_path = os.path.join(project_path, r'lte_dsp_app\main\%s\%s' % (ue, product))
-        self.tool.check_folder_exist(py_base_path)
+        WinCmd.check_folder_exist(py_base_path)
         for partial_build in partial_builds:
             py_file = os.path.join(py_base_path, partial_build, '%s.py' % partial_build)
-            self.tool.check_file_exist(py_file)
+            WinCmd.check_file_exist(py_file)
             WinCmd.cmd('python %s' % os.path.basename(py_file), os.path.dirname(py_file), showcmdwin = True, wait = False, retaincmdwin = False)
             self.tool.print_('Run %s finished.' % py_file)
 
@@ -445,7 +424,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_build_lte(self, args, opts = None):
         project_path, output_paths = args[0], self._split_option(opts.output)
-        self.tool.check_folder_exist(project_path)
+        WinCmd.check_folder_exist(project_path)
         self._set_default_project_path(project_path)
         output_paths = ['default' if p == 'user' else p for p in output_paths]
         if opts.binary: output_paths.append('default')
@@ -453,7 +432,7 @@ class CmdLine(CmdLineWithAbbrev):
         temp_output_paths, output_paths = output_paths, []
         for output_path in temp_output_paths:
             if output_path == 'default': output_path = self.tool.binary_path
-            self.tool.check_folder_exist(output_path, can_be_empty = True)
+            WinCmd.check_folder_exist(output_path, can_be_empty = True)
             output_paths.append(output_path)
         build_cmd_path = os.path.join(project_path, self.tool.rel_build_path)
         build_binary_path = os.path.join(project_path, self.tool.rel_build_hde_path if opts.hde else self.tool.rel_build_ftp_path)
@@ -530,7 +509,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_build(self, args, opts = None):
         project_path, output_paths = args[0], self._split_option(opts.output)
-        self.tool.check_folder_exist(project_path)
+        WinCmd.check_folder_exist(project_path)
         self._set_default_project_path(project_path)
         output_paths = ['default' if p == 'user' else p for p in output_paths]
         if opts.binary: output_paths.append('default')
@@ -538,7 +517,7 @@ class CmdLine(CmdLineWithAbbrev):
         temp_output_paths, output_paths = output_paths, []
         for output_path in temp_output_paths:
             if output_path == 'default': output_path = self.tool.binary_path
-            self.tool.check_folder_exist(output_path, can_be_empty = True)
+            WinCmd.check_folder_exist(output_path, can_be_empty = True)
             output_paths.append(output_path)
         build_cmd_path = os.path.join(project_path, self.tool.rel_build_path)
         build_binary_path = os.path.join(project_path, self.tool.rel_build_hde_path if opts.hde else self.tool.rel_build_ftp_path)
@@ -743,7 +722,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_copy_change_files(self, args, opts = None):
         file_list = os.path.join(args[0], 'file_change_list.txt') if os.path.isdir(args[0]) else args[0]
-        self.tool.check_file_exist(file_list)
+        WinCmd.check_file_exist(file_list)
         self.tool.copy_change_files(file_list)
         self.tool.print_('copy change files successfully!')
 
@@ -755,7 +734,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_copy_case(self, args, opts = None):
         folder = self.tool.get_temp_path(opts.path) or self.tool.get_abs_path(opts.path)
-        self.tool.check_folder_exist(folder)
+        WinCmd.check_folder_exist(folder)
         vectors = []
         if opts.copy_from:
             self.tool.copy_case_from_automation(self._split_option(args[0]), folder)
@@ -765,7 +744,7 @@ class CmdLine(CmdLineWithAbbrev):
                 if opts.vector.endswith('html'):
                     html_file = self._get_html_filename(opts.vector)
                     if not os.path.dirname(html_file): html_file = self.tool.get_re_files(os.path.join(folder, html_file))[0]
-                    self.tool.check_file_exist(html_file)
+                    WinCmd.check_file_exist(html_file)
                     vec_numbers, vectors, _ = self.tool.gen_script_from_html(html_file)
                     vectors = [os.path.join(self.tool.aiq_path, p) for p in vectors]
                 else:
@@ -779,7 +758,7 @@ class CmdLine(CmdLineWithAbbrev):
     def do_gen_change_files(self, args, opts = None):
         update_file = os.path.join(args[0], 'file_change_list.txt') if os.path.isdir(args[0]) else args[0]
         change_list_file = os.path.join(os.path.dirname(args[0]), 'file_change_list.txt')
-        self.tool.check_file_exist(update_file)
+        WinCmd.check_file_exist(update_file)
         self.tool.update_file_to_change_file(update_file, change_list_file)
 
     @options([], "[working_dir]")
@@ -840,7 +819,7 @@ class CmdLine(CmdLineWithAbbrev):
             src_folder = self.tool.get_re_files(src_folder, exclude_dir = False)
         dest_folder = args[1] if len(args) > 1 else self.tool.temp_path
         if not os.path.isdir(dest_folder): dest_folder = os.path.join(os.getcwd(), dest_folder)
-        self.tool.check_folder_exist(dest_folder)
+        WinCmd.check_folder_exist(dest_folder)
         if opts.empty_dest: WinCmd.del_dir(dest_folder)
         if not isinstance(src_folder, list): src_folder = [src_folder]
         for s in src_folder:
@@ -919,12 +898,13 @@ class CmdLine(CmdLineWithAbbrev):
 
     @options([make_option("-o", "--output", action = "store", type = "string", dest = "output_folder", default = "", help = "output folder"),
               make_option("-v", "--vector", action = "store_true", dest = "vector", default = False, help = "find vector"),
+              make_option("-m", "--lte_dcch_msg", action = "store_true", dest = "lte_dcch_msg", default = False, help = "add first LTE dcch msg after switch vector, for ENDC case"),
               make_option("-n", "--number", action = "store", type = "string", dest = "number", default = "", help = "manually set test number"),
              ], "[-v] [-o output_folder] [-n test_number] html")
     @min_args(1)
     def do_get_usf_and_script(self, args, opts = None):
         html_file = self._get_html_filename(args[0])
-        self.tool.check_file_exist(html_file)
+        WinCmd.check_file_exist(html_file)
         html_path, filename = os.path.split(html_file)
         case_num = filename[:5]
         try:
@@ -936,10 +916,10 @@ class CmdLine(CmdLineWithAbbrev):
         if opts.output_folder:
             output_folder = opts.output_folder
         else:
-            self.tool.check_folder_exist(self.tool.script_path)
+            WinCmd.check_folder_exist(self.tool.script_path)
             output_folder = os.path.join(self.tool.script_path, case_num)
             if not os.path.isdir(output_folder): WinCmd.make_dir(output_folder)
-        self.tool.check_folder_exist(output_folder)
+        WinCmd.check_folder_exist(output_folder)
         output_file = os.path.join(output_folder, '%s.txt' % case_num)
         WinCmd.copy_file(html_file, output_folder)
         case_file = self.tool.get_case_file_from_html(html_file)
@@ -950,7 +930,7 @@ class CmdLine(CmdLineWithAbbrev):
                 WinCmd.copy_file(case_file, output_folder)
         else:
             self.tool.print_('Warning: cannot find case file from %s' % os.path.basename(html_file))
-        vec_numbers, aiq_files, no_vec_aiq_files = self.tool.gen_script_from_html(html_file, output_file)
+        vec_numbers, aiq_files, no_vec_aiq_files = self.tool.gen_script_from_html(html_file, output_file, first_dcch_msg_after_switch_vector = opts.lte_dcch_msg)
         self.tool.print_('generate %s successfully! vec numbers %s.' % (output_file, vec_numbers))
         for aiq in no_vec_aiq_files:
             self.tool.print_('AIQ file(no vec): %s.' % aiq)
@@ -987,7 +967,7 @@ class CmdLine(CmdLineWithAbbrev):
         usf_files = [self.tool.get_re_files(os.path.join(opts.usf_file_path, f))[0] for f in args]
         close_window = True if opts.restart else opts.close
         if close_window:
-            self.tool.check_file_exist(os.path.join(hde_tool_path, 'kill_hlc_dsp.bat'))
+            WinCmd.check_file_exist(os.path.join(hde_tool_path, 'kill_hlc_dsp.bat'))
             WinCmd.cmd('kill_hlc_dsp.bat', hde_tool_path, showcmdwin = True)
             self._runcmd('close error')
             self.tool.print_('kill all hlc dsp window.')
@@ -997,7 +977,7 @@ class CmdLine(CmdLineWithAbbrev):
         if opts.close:
             self.tool.print_('close hde in project %s successfully' % opts.project_path)
         else:
-            self.tool.check_file_exist(os.path.join(hde_tool_path, 'start_hde.pyw'))
+            WinCmd.check_file_exist(os.path.join(hde_tool_path, 'start_hde.pyw'))
             WinCmd.cmd('start_hde.pyw', hde_tool_path)
             self.tool.print_('start hde in project %s successfully' % opts.project_path)
 
@@ -1006,7 +986,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_change_files_name(self, args, opts = None):
         folder = args[0]
-        self.tool.check_folder_exist(folder)
+        WinCmd.check_folder_exist(folder)
         prefix = opts.prefix if opts.prefix else (os.path.basename(folder) + '_')
         files_num = self.tool.change_files_name(folder, prefix)
         self.tool.print_('delete prefix %s for %d files successfully.' % (prefix, files_num))
@@ -1103,8 +1083,8 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_gen_log(self, args, opts = None):
         for tool_file in ['loganalyse.exe', 'loganalyse.dll']:
-            self.tool.check_file_exist(os.path.join(opts.path, tool_file))
-        if not opts.force: self.tool.check_file_exist(os.path.join(opts.path, 'tm500defs.dll'))
+            WinCmd.check_file_exist(os.path.join(opts.path, tool_file))
+        if not opts.force: WinCmd.check_file_exist(os.path.join(opts.path, 'tm500defs.dll'))
         files = self.tool.get_re_files(os.path.join(opts.path, args[0]))
         if not (opts.dsp and opts.only):
             self.tool.log_format(files, domain = 'hlc', no_sort = opts.no_sort, latest = opts.latest)
@@ -1244,6 +1224,17 @@ class CmdLine(CmdLineWithAbbrev):
         self.tc.gen_all_upload_files(mk)
         self.tc.run_tc()
 
+    @options([], "project_path")
+    @min_args(1)
+    def do_remote_run(self, args, opts = None):
+        project_path = args[0]
+        WinCmd.check_folder_exist(project_path)
+        self._set_default_project_path(project_path)
+        remote_run_tool = self.tool.get_remote_run(project_path)
+        hook_tool = HookToolCacheManager(remote_run_tool)
+        hook_tool.run()
+        self.tool.print_('remote run end')
+
     @options([make_option("-c", "--config_pattern", action = "store", type = "string", dest = "config_pattern", default = "", help = "re config pattern to filter config files"),
              ], "[-c pattern]")
     def do_rav(self, args, opts = None):
@@ -1278,7 +1269,7 @@ class CmdLine(CmdLineWithAbbrev):
              ], "[-o output_path] remote_run_number")
     def do_remote_result(self, args, opts = None):
         output_path = opts.output_path
-        self.tool.check_folder_exist(output_path)
+        WinCmd.check_folder_exist(output_path)
         self.tool.get_files_from_teamcity(args[0], output_path)
 
     @options([make_option("-r", "--readonly", action = "store_true", dest = "readonly", default = False, help = "read the current RUN1"),
@@ -1288,7 +1279,7 @@ class CmdLine(CmdLineWithAbbrev):
             self.tool.print_('current run1 folder: %s' % self.tool.get_run1_folder())
         else:
             run1_folder = args[0] if len(args) else ''
-            if run1_folder: self.tool.check_folder_exist(run1_folder)
+            if run1_folder: WinCmd.check_folder_exist(run1_folder)
             self.tool.set_run1_folder(run1_folder)
 
     @options([make_option("-p", "--product", action = "store", type = "string", dest = "product", default = "", help = "format: [ue]_[product]_[rat]: sue_4x2_fdd, sue_4x2_ulmimo_tdd, mue_2x2_fdd, etc."),
@@ -1303,10 +1294,10 @@ class CmdLine(CmdLineWithAbbrev):
             output_file = os.path.join(args[0], 'result_1.txt')
         else:
             output_file = args[0]
-            self.tool.check_folder_exist(os.path.dirname(output_file))
+            WinCmd.check_folder_exist(os.path.dirname(output_file))
             if os.path.splitext(output_file)[-1] != '.txt': raise CmdException('invalid file (*.txt): %s' % output_file)
         if opts.from_file:
-            self.tool.check_file_exist(output_file)
+            WinCmd.check_file_exist(output_file)
             self.tool.print_('generate more results from file: %s' % output_file)
             self.tool.gen_more_result(output_file, opts.folder, opts.product, opts.regen_search_folder)
         else:
@@ -1411,7 +1402,7 @@ class CmdLine(CmdLineWithAbbrev):
              ], "[-r results_folder] [-p product] [-b batch_dir] [-x except_batch1|except_batch2] bat_file")
     @min_args(1)
     def do_gen_rav_cases_batch(self, args, opts = None):
-        self.tool.check_folder_exist(opts.batch_dir, can_be_empty = True)
+        WinCmd.check_folder_exist(opts.batch_dir, can_be_empty = True)
         bat_file = os.path.join(self.tool.get_abs_path(os.path.dirname(args[0])), os.path.basename(args[0]))
         if opts.results_folder:
             self.tool.gen_rav_batch_bat_from_results_folder(bat_file, opts.results_folder)
@@ -1468,7 +1459,7 @@ class CmdLine(CmdLineWithAbbrev):
     def do_send(self, args, opts = None):
         comm = ClipComm('client', int(opts.max_tx_bytes))
         if opts.info:
-            self.tool.check_folder_exist(args[0])
+            WinCmd.check_folder_exist(args[0])
             filename = comm.send_file_info(args[0])
         else:
             filename = comm.enc_file(self.tool.get_re_files(args, exclude_dir = False), opts.magic, opts.cont_mode)
@@ -1533,7 +1524,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(2)
     def do_clearcase(self, args, opts = None):
         cmd, file_list = args[0], os.path.join(args[1], 'file_change_list.txt') if os.path.isdir(args[1]) else args[1]
-        self.tool.check_file_exist(file_list)
+        WinCmd.check_file_exist(file_list)
         if opts.cc_tool and os.path.isfile(opts.cc_tool): CcTool.set_cctool(opts.cc_tool)
         if cmd in ['checkout', 'checkin', 'undo_checkout']:
             self.tool.check_change_files(cmd, file_list, opts.project_path)
@@ -1585,11 +1576,11 @@ class CmdLine(CmdLineWithAbbrev):
         label, path = self.tool.get_ver_label(args[0], opts.product, opts.force_temp_binary)
         if opts.spec:
             spec_file = os.path.join(path, 'build_config_spec.txt')
-            self.tool.check_file_exist(spec_file)
+            WinCmd.check_file_exist(spec_file)
             WinCmd.explorer(spec_file)
         if opts.log: WinCmd.explorer(os.path.join(path, 'loganalyse'))
           #  log_file = os.path.join(path, 'loganalyse', 'logcombuilder.pyw')
-         #   self.tool.check_file_exist(log_file)
+         #   WinCmd.check_file_exist(log_file)
          #   tool_path, tool_name = os.path.split(log_file)
          #   WinCmd.cmd(r'python "%s"' % tool_name, tool_path, showcmdwin = True, wait = False)
         if opts.view: WinCmd.explorer(path)
@@ -1604,7 +1595,7 @@ class CmdLine(CmdLineWithAbbrev):
                 copy_pyd_files_to_asn_folder = True
             else:
                 dest_dir = self.tool.get_abs_path(opts.to, 'binary')
-                self.tool.check_folder_exist(dest_dir)
+                WinCmd.check_folder_exist(dest_dir)
             if opts.binary:
                 version_binary_path = os.path.join(path, 'ppc_pq', 'public', 'ftp_root')
                 WinCmd.copy_dir(version_binary_path, dest_dir)
@@ -1640,10 +1631,10 @@ class CmdLine(CmdLineWithAbbrev):
              ], "[-o trace_file_path] [-0] [-p product] {version(eg: K4.6.4REV50)}")
     @min_args(1)
     def do_trace(self, args, opts = None):
-        if opts.trace_file_path: self.tool.check_folder_exist(opts.trace_file_path)
+        if opts.trace_file_path: WinCmd.check_folder_exist(opts.trace_file_path)
         label, path = self.tool.get_ver_label(args[0], opts.product, opts.force_temp_binary)
         traceviewer_path = os.path.join(path, 'traceviewer')
-        self.tool.check_folder_exist(traceviewer_path)
+        WinCmd.check_folder_exist(traceviewer_path)
         if opts.trace_file_path:
             WinCmd.copy_dir(traceviewer_path, opts.trace_file_path, empty_dest_first = False, include_src_dir = True)
             WinCmd.copy_file(os.path.join(traceviewer_path, 'msg_nums.dat'), opts.trace_file_path)
@@ -1658,7 +1649,7 @@ class CmdLine(CmdLineWithAbbrev):
              ], "[-p trace_file_path] [-t] [-0] html")
     @min_args(1)
     def do_trc_file(self, args, opts = None):
-        if opts.trace_file_path: self.tool.check_folder_exist(opts.trace_file_path)
+        if opts.trace_file_path: WinCmd.check_folder_exist(opts.trace_file_path)
         html_file = self._get_html_filename(args[0])
         html_path, filename = os.path.split(html_file)
         trc_file = self.tool.get_trc_file_from_html(html_file)
@@ -1682,7 +1673,8 @@ class CmdLine(CmdLineWithAbbrev):
 
     @options([make_option("-l", "--log", action = "store_true", dest = "log", default = False, help = "open log builder"),
               make_option("-t", "--trace", action = "store_true", dest = "trace", default = False, help = "open trace"),
-             ], "[-l] [-t] project_path")
+              make_option("-r", "--remote_run", action = "store_true", dest = "remote_run", default = False, help = "open remote run"),
+             ], "[-l] [-t] [-r] project_path")
     def do_tool(self, args, opts = None):
         project_path = args[0] if len(args) > 0 else self._get_project_path()
         if opts.log:
@@ -1691,6 +1683,9 @@ class CmdLine(CmdLineWithAbbrev):
         if opts.trace:
             tool_path, tool_name = os.path.split(self.tool.get_traceviewer(project_path))
             WinCmd.process(tool_name, tool_path, shell = True)
+        if opts.remote_run:
+            tool_path, tool_name = os.path.split(self.tool.get_remote_run(project_path))
+            WinCmd.cmd(r'python "%s"' % tool_name, tool_path, showcmdwin = True, wait = False)
         if opts.log or opts.trace:
             self.tool.print_('open tool in path %s successfully!' % tool_path)
 
@@ -1698,7 +1693,7 @@ class CmdLine(CmdLineWithAbbrev):
              ], "[-o output_path] ubi_number")
     def do_ubi_file(self, args, opts = None):
         output_path = opts.output_path or self.tool.ubi_path
-        self.tool.check_folder_exist(output_path)
+        WinCmd.check_folder_exist(output_path)
         self.tool.get_files_from_clearquest(args[0], output_path)
 
     @options([], "")
@@ -1749,7 +1744,7 @@ class CmdLine(CmdLineWithAbbrev):
                 dest_folder = os.path.join(os.path.dirname(folder), dest_folder_name)
         else:
             dest_folder = os.path.join(os.path.dirname(folder), 'Run1.On')
-        self.tool.check_folder_exist(folder)
+        WinCmd.check_folder_exist(folder)
         if not opts.force and os.path.isdir(dest_folder): raise CmdException('dest folder already exist! %s' % dest_folder)
         try:
             WinCmd.rename_dir(folder, dest_folder)
@@ -1869,7 +1864,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_clean(self, args, opts = None):
         #clean_tool = os.path.join(args[0], 'tm_build_system', 'utilities', 'remove_all_derived_files.pyw')
-        #self.tool.check_file_exist(clean_tool)
+        #WinCmd.check_file_exist(clean_tool)
         #WinCmd.cmd('python %s' % os.path.basename(clean_tool), os.path.dirname(clean_tool), showcmdwin = True)
         self.tool.clean_build_files(args[0])
         self.tool.print_('clean %s successfully!' % args[0])
@@ -1955,7 +1950,7 @@ class CmdLine(CmdLineWithAbbrev):
     @min_args(1)
     def do_check(self, args, opts = None):
         file_list = os.path.join(args[0], 'file_change_list.txt') if os.path.isdir(args[0]) else args[0]
-        self.tool.check_file_exist(file_list)
+        WinCmd.check_file_exist(file_list)
         output_file = opts.output_file or self.tool.get_temp_filename()
         self.tool.code_check_files(file_list, output_file, opts.project_path)
         self.tool.print_('check files finished with output %s' % output_file)
@@ -2050,6 +2045,7 @@ class TestTool:
         self.rel_pyd_dir = '_pyd'
         self.traceviewer_rel_paths = [r'tm_build_system\build\release\traceviewer', r'tm_build_system\build\win32_obsolete', r'tm_build_system\build\win32']
         self.log_rel_paths = [r'tm_build_system\build\win32_obsolete', r'tm_build_system\build\win32', r'tm_build_system\build\release\loganalyse']
+        self.teamcity_rel_paths = [r'tm_build_system\teamcity']
         # TI tool path
         self.ti_tool_paths = [r'C:\BuildTools\ti_cgtools_v7_3\C\bin', 'C:\BuildTools\ti_cgtools_v7_3\B\bin']
         self.rav_url_product_alias = {'mue_tdd': 'lte-mue-tdd',
@@ -2079,7 +2075,7 @@ class TestTool:
         self.stevenage_ip_addr_base = '10.120.169.0'
         self.tsms = TSMS(path = os.path.join(self.file_path, 'tsms'))
         self.transfer_folder = r'\\ltn3-eud-nas01\data\SHA2\swang2\transfer'
-        self.mirror_transfer_folder = r'\\ltn3-apd-nas01\data\SHA2\swang2\transfer'
+        self.mirror_transfer_folder = r'\\ltn3-apd-nas01\data\SHA2\swang2\transfer'  # shanghai
         self.signal_folder = os.path.join(self.transfer_folder, 'signal')
         self.remote_copy_folder = os.path.join(self.transfer_folder, 'clipboard')
         if clear_signals: self.clear_signals()
@@ -2100,7 +2096,7 @@ class TestTool:
 
     def get_remote_run1_path(self):
         run_result_folder = self.remote_run_result_path
-        self.check_folder_exist(run_result_folder)
+        WinCmd.check_folder_exist(run_result_folder)
         _, ip_str = self.get_ip_addr()
         ip_str = ip_str + '_' if ip_str else ''
         run1_folder = os.path.join(run_result_folder, 'run1_%s%s' % (ip_str, datetime.now().strftime('%y%m%d')))
@@ -2122,7 +2118,13 @@ class TestTool:
 
     def get_logcombuilder(self, project_path):
         return self._get_tool(project_path, self.log_rel_paths, tool_name = 'logcombuilder.pyw')
-
+    
+    def get_remote_run(self, project_path):
+        return self._get_tool(project_path, self.teamcity_rel_paths, tool_name = 'remote_run.pyw')
+        
+    def get_presub(self, project_path):
+        return self._get_tool(project_path, self.teamcity_rel_paths, tool_name = 'presub.pyw')
+        
     def get_temp_build_file(self, project_path, unique = False):
         build_temp_path = os.path.join(project_path, self.rel_build_temp_path)
         if not os.path.isdir(build_temp_path): WinCmd.make_dir(build_temp_path)
@@ -2210,17 +2212,9 @@ class TestTool:
         if folder: run_folder = os.path.join(os.path.dirname(run_folder), folder)
         return run_folder
 
-    def check_file_exist(self, filename, can_be_empty = False):
-        if not can_be_empty and not filename: raise CmdException('file can not be empty: %s' % filename)
-        if filename and not os.path.isfile(filename): raise CmdException('file not found: %s' % filename)
-
-    def check_folder_exist(self, folder, can_be_empty = False):
-        if not can_be_empty and not folder: raise CmdException('folder can not be empty: %s' % folder)
-        if folder and not os.path.isdir(folder): raise CmdException('folder not found: %s' % folder)
-
     def add_default_folder(self, files, default_folder):
         if not default_folder: return files
-        self.check_folder_exist(default_folder)
+        WinCmd.check_folder_exist(default_folder)
         input_is_file = False
         if not isinstance(files, list):
             files = [files]
@@ -2306,7 +2300,7 @@ class TestTool:
             if not dest_folder: dest_folder = self.exe_path
             ver = 'ULAN_VER_%s_%s' % tuple(ulan_ver.split('.'))
             ulan_file = os.path.join(self.ulan_path, ver, 'LteUlan.exe')
-            self.check_file_exist(ulan_file)
+            WinCmd.check_file_exist(ulan_file)
             WinCmd.copy_file(ulan_file, dest_folder)
             self.print_('ulan version changed to %s (from %s to %s)' % (ulan_ver, os.path.dirname(ulan_file), dest_folder))
 
@@ -2314,7 +2308,7 @@ class TestTool:
         if not os.path.isfile(self.run1_config_file):
             self.print_('run1 config file : %s not found! Set to default run1 folder.' % self.run1_config_file)
             return self.default_run1_folder
-        #self.check_file_exist(self.run1_config_file)
+        #WinCmd.check_file_exist(self.run1_config_file)
         run1_folders = []
         with open(self.run1_config_file, 'r') as f:
             for line in f:
@@ -2351,7 +2345,7 @@ class TestTool:
 
 
     def set_run1_folder(self, run1_folder = '', show_config_file = True):
-        self.check_file_exist(self.run1_config_file)
+        WinCmd.check_file_exist(self.run1_config_file)
         if not run1_folder: run1_folder = self.default_run1_folder
         if self.get_run1_folder() == run1_folder:
             self.print_('run1 folder no need change: %s' % run1_folder)
@@ -2376,7 +2370,7 @@ class TestTool:
 
     def delete_earliest_subfolders(self, num = 1, reserve_days = 14, folder = ''):
         folder = folder or self.binary_path
-        self.check_folder_exist(folder)
+        WinCmd.check_folder_exist(folder)
         threshold = time.time() - reserve_days * 24*3600
         subfolders = [os.path.join(folder, f) for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f))]
         subfolders_mtime = [(os.stat(f).st_mtime, f) for f in subfolders if os.stat(f).st_mtime < threshold or os.path.basename(f).endswith('_1')]
@@ -2558,7 +2552,7 @@ class TestTool:
         return (output_batches, rav_cases_not_in_batch, redundant_cases_in_batch)
 
     def gen_rav_batch_bat(self, bat_file, product, batch_dir = None, except_batches = []):
-        self.check_folder_exist(os.path.dirname(bat_file))
+        WinCmd.check_folder_exist(os.path.dirname(bat_file))
         batches, remain_rav_cases, redundant_batch_cases = self._get_product_batch(product, batch_dir, except_batches)
         ordered_batches, ordered_batches_for_print = self._sort_batches(batches)
         if remain_rav_cases:
@@ -2617,7 +2611,7 @@ class TestTool:
                 else: f.write('\n')
 
     def get_batch_from_results_folder(self, results_folder):
-        self.check_folder_exist(results_folder)
+        WinCmd.check_folder_exist(results_folder)
         batches = []
         for filename in glob(os.path.join(results_folder, '*.html')):
             f = os.path.basename(filename)
@@ -2666,7 +2660,7 @@ class TestTool:
             files_mtime.sort(reverse = True)
             files = [files_mtime[0][1]]
         for f in files:
-            self.check_file_exist(f)
+            WinCmd.check_file_exist(f)
             src_f = os.path.basename(f)
             dest_f = '%s_%s.txt' % (os.path.splitext(src_f)[0], domain)
             WinCmd.cmd(r'loganalyse.exe %s %s > %s' % (flag, src_f, dest_f), os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
@@ -2746,9 +2740,9 @@ class TestTool:
         return 'DEF_MSG_BASE(%s, %s): Msg %d.    (number from 1).' % (domain, msg_base, msg_num)
 
     def gen_rav_priv_bin(self, bin_path, template_folder, output_folder, target_name, product = ''):
-        self.check_folder_exist(bin_path)
-        self.check_folder_exist(template_folder)
-        self.check_folder_exist(output_folder)
+        WinCmd.check_folder_exist(bin_path)
+        WinCmd.check_folder_exist(template_folder)
+        WinCmd.check_folder_exist(output_folder)
         target_folder = os.path.join(output_folder, target_name)
         WinCmd.del_dir(target_folder)
         # check product
@@ -2771,7 +2765,7 @@ class TestTool:
         WinCmd.copy_dir(os.path.join(bin_path, 'tools'), target_tools_folder)               # copy tools
         pyd_path = os.path.join(bin_path, self.rel_pyd_dir)
         for pyd_file in [os.path.join(pyd_path, f) for f in self.pyd_file]:                 # copy pyd files
-            self.check_file_exist(pyd_file)
+            WinCmd.check_file_exist(pyd_file)
             WinCmd.copy_file(pyd_file, target_tools_folder)
         WinCmd.copy_dir(os.path.join(bin_path, 'loganalyse'), target_loganalyse_folder)     # copy loganalyse
         except_files = [self.rel_pyd_dir] if not isinstance(self.rel_pyd_dir, list) else self.rel_pyd_dir
@@ -3012,7 +3006,7 @@ class TestTool:
                     os.remove(target_file)
                 else:
                     return True
-            self.check_file_exist(vector)
+            WinCmd.check_file_exist(vector)
             try:
                 WinCmd.copy_file(vector, self.pxi_path)
                 self.print_('copy vector %s to folder %s successfully' % (vector, self.pxi_path))
@@ -3040,7 +3034,7 @@ class TestTool:
         new_fum = os.path.join(self.batch_path, 'batch_fum_.txt')
         if not os.path.isfile(new_fum):
             batch_fum = os.path.join(self.batch_path, 'batch_fum.txt')
-            self.check_file_exist(batch_fum)
+            WinCmd.check_file_exist(batch_fum)
             copy_line = True
             with open(batch_fum, 'r') as f:
                 with open(new_fum, 'w') as f_write:
@@ -3054,7 +3048,7 @@ class TestTool:
         return os.path.basename(new_fum)
 
     def _change_batch_run_times(self, batch_file, run_times = 1):
-        self.check_file_exist(batch_file)
+        WinCmd.check_file_exist(batch_file)
         if run_times > 1:
             batch_cases, batch_head = self._get_batch_cases(batch_file)
             with open(batch_file, 'w') as f_write:
@@ -3068,7 +3062,7 @@ class TestTool:
                 f_write.write('\ntests_stop\n')
 
     def _change_bat_file(self, bat_file, start_batch_num = 0, pfc_config = '', re_filter_pattern = ''):
-        self.check_file_exist(bat_file)
+        WinCmd.check_file_exist(bat_file)
         if start_batch_num > 0 or pfc_config or re_filter_pattern:
             batch_line_prefix = 'call ttm_runner.py'
             with open(bat_file, 'r') as f:
@@ -3142,7 +3136,7 @@ class TestTool:
 
     def _get_period(self, last_timestamp_num = 1, run1_folder = ''):
         timestamp_file = self._get_timestamp_file(run1_folder)
-        self.check_file_exist(timestamp_file)
+        WinCmd.check_file_exist(timestamp_file)
         lines = [tuple(line.strip().split('--')) for line in open(timestamp_file, 'r').readlines() if line.strip()]
         lines = lines[-min(last_timestamp_num, len(lines)):]
         period = []
@@ -3193,7 +3187,7 @@ class TestTool:
             self.print_('show case result file: %s successfully.' % last_case_found[0])
 
     def _file_in_period(self, filename, period):
-        self.check_file_exist(filename)
+        WinCmd.check_file_exist(filename)
         file_time = datetime.fromtimestamp(os.stat(filename).st_mtime)
         sec_dev = timedelta(seconds = 2)
         for p_start, p_end in period:
@@ -4023,7 +4017,7 @@ class TestTool:
                     product = '%s_all_%s' % (pro, rat)
                 rav_path, not_used = self._get_rav_path(product)
                 folders = [os.path.join(rav_path, version)]
-                self.check_folder_exist(folders[0])
+                WinCmd.check_folder_exist(folders[0])
                 self.print_('it should be a temporary binary.')
                 label = version
         if not folders: raise CmdException('cannot find version(%s): %s' % (version, ver_str))
@@ -4035,7 +4029,7 @@ class TestTool:
         if len(folders) > 1: raise CmdException('find %d folders, more than 1' % len(folders))
         if not label:
             label_file = os.path.join(folders[0], 'labeling.txt')
-            self.check_file_exist(label_file)
+            WinCmd.check_file_exist(label_file)
             lines = open(label_file, 'r').readlines()
             label_r = re.search(r'label\s+\b([-\w]*)\b', lines[0].strip())
             if not label_r: raise CmdException('cannot find label in file %s' % label_file)
@@ -4066,7 +4060,7 @@ class TestTool:
         else:
             #rav_path = os.path.join(self.rav_path, 'LTE_CUE_COMBINED')
             rav_path = os.path.join(self.rav_path, 'CUE')
-        self.check_folder_exist(rav_path)
+        WinCmd.check_folder_exist(rav_path)
         return (rav_path, pro)
 
     def _get_rav_search_folders(self, product, search_max_folder, except_folder):
@@ -4221,11 +4215,11 @@ class TestTool:
         if not usf_files: raise CmdException('no usf files specified.')
         if not isinstance(usf_files, list): usf_files = list(usf_files)
         for usf_file in usf_files:
-            self.check_file_exist(usf_file)
+            WinCmd.check_file_exist(usf_file)
         vmbra_cmd = 'vumbra.exe'
         hde_kill_cmd = 'hde_kill.exe'
-        self.check_file_exist(os.path.join(hde_tool_path, vmbra_cmd) if hde_tool_path else vmbra_cmd)
-        self.check_file_exist(os.path.join(hde_tool_path, hde_kill_cmd) if hde_tool_path else hde_kill_cmd)
+        WinCmd.check_file_exist(os.path.join(hde_tool_path, vmbra_cmd) if hde_tool_path else vmbra_cmd)
+        WinCmd.check_file_exist(os.path.join(hde_tool_path, hde_kill_cmd) if hde_tool_path else hde_kill_cmd)
 
         for index, usf_file in enumerate(usf_files):
             vumbra_file = 'vumbra%s.opts' % ('' if index == 0 else str(index))
@@ -4234,7 +4228,7 @@ class TestTool:
                 WinCmd.cmd('%s -n %d %s' % (vmbra_cmd, index, usf_file), hde_tool_path, showcmdwin = True, wait = False)
                 time.sleep(0.5)
                 WinCmd.cmd('%s vumbra' % hde_kill_cmd, hde_tool_path)
-            self.check_file_exist(vumbra_file)
+            WinCmd.check_file_exist(vumbra_file)
             data = open(vumbra_file, 'r').read()
             input_string = 'InputVector=string(%s)' % os.path.abspath(usf_file)
             input_string = input_string.replace('\\', '\\\\\\\\')
@@ -4267,34 +4261,47 @@ class TestTool:
         case_file = os.path.join(os.path.dirname(html_file), s.group(1)) if s else ''
         return case_file
 
-    def gen_script_from_html(self, html_file, script_file = ''):
+    def gen_script_from_html(self, html_file, script_file = '', first_dcch_msg_after_switch_vector = False):
         def _parse_load_vector(line):
-            line = line.strip()
+            ### NR5G
+            # USRP_SYSTEM : USRP [0], SERVER [0], antenna [0] >>> e:\pxi_tv\lte_enb_0_cell_0_msg2_msg4_mo_sig_b1.dat Load OK
+            # USRP_SYSTEM : USRP [1], SERVER [1], antenna [0] >>> c:\rav99-2_auto_test\teamcityrav\vectors\98853_nr_msg2_ulgrant_ant0.dat Load OK
+            s = re.search(r'USRP_SYSTEM\s*:.*\\([^\\\.]+\.dat).*', line)  # vector
+            if s:
+                total_line, aiq_file = s.group(0), s.group(1)
+                return [total_line, aiq_file, '']
+            ### LTE
             # PXI: Loading test vector, filename: E:\PXI_TV\LTE_MUE_32637_ant0.aiq, Carrier frequency: 2140000000, Transmission power: -32
             s = re.search(r'PXI:.*PXI_TV\\(\D*(\d{5})?.*\.aiq).*', line)  # vector
             if s:
                 total_line, aiq_file, vec_number = s.group(0), s.group(1), s.group(2)
                 return [total_line, aiq_file, vec_number]
-            else:
-                # SIG GEN: pxi_slave.S[2] .[0] [ LTEA40114_Cell13_3020] 07/02/2012 12:31:02 19661.146Kb -20 dBm 2155.0000 MHz
-                # SIG GEN: pxi.S[0]M .[0] [ LTEA40114_Cell1_3020] 07/02/2012 12:29:35 19661.146Kb -20 dBm 2125.0000 MHz
-                # SIG GEN: pxi.S[1] .[0] [ LTEA40114_Cell1_3020] 07/02/2012 12:29:35 19661.146Kb -20 dBm 2125.0000 MHz
-                s = re.search(r'SIG GEN: *pxi(_[\d\w]+)?\.S\[(\d)\](M)? *\.\[(\d)\] *\[ *(\D*(\d{5}).*)\].*', line)
-                if s:
-                    total_line, pxi_ant, vector_index, aiq_file, vec_number = s.group(0), s.group(2), s.group(4), s.group(5)+'.aiq', s.group(6)
-                    return [total_line, aiq_file, vec_number]
-                else:
-                    # SIG GEN: pxi_3.S[0] .[0] [LTE_eNB_13_Cell_132_Msg2_Msg4_MO_Sig_B1_Ant0] 26/07/2014 02:25:30 80 TTI -20 dBm 2120.0000 MHz
-                    # SIG GEN: pxi_3.S[0] .[1] [ Cell_132_RLC_AM_32UE_DL_Ant0] 19/08/2015 15:27:01 640 TTI -20 dBm 2120.0000 MHz
-                    # SIG GEN: pxi_3.S[1] .[0] [LTE_eNB_13_Cell_132_Msg2_Msg4_MO_Sig_B1_Ant1] 26/07/2014 02:25:33 80 TTI -20 dBm 2120.0000 MHz
-                    # SIG GEN: pxi_3.S[1] .[1] [ Cell_132_RLC_AM_32UE_DL_Ant1] 19/08/2015 15:27:32 640 TTI -20 dBm 2120.0000 MHz
-                    s = re.search(r'SIG GEN: *pxi(_[\d\w]+)?\.S\[(\d)\](M)? *\.\[(\d)\] *\[ *([_\w\d]+)\].*', line)
-                    if s:
-                        total_line, pxi_ant, vector_index, aiq_file = s.group(0), s.group(2), s.group(4), s.group(5)+'.aiq'
-                        return [total_line, aiq_file, '']
+            # SIG GEN: pxi_slave.S[2] .[0] [ LTEA40114_Cell13_3020] 07/02/2012 12:31:02 19661.146Kb -20 dBm 2155.0000 MHz
+            # SIG GEN: pxi.S[0]M .[0] [ LTEA40114_Cell1_3020] 07/02/2012 12:29:35 19661.146Kb -20 dBm 2125.0000 MHz
+            # SIG GEN: pxi.S[1] .[0] [ LTEA40114_Cell1_3020] 07/02/2012 12:29:35 19661.146Kb -20 dBm 2125.0000 MHz
+            s = re.search(r'SIG GEN: *pxi(_[\d\w]+)?\.S\[(\d)\](M)? *\.\[(\d)\] *\[ *(\D*(\d{5}).*)\].*', line)
+            if s:
+                total_line, pxi_ant, vector_index, aiq_file, vec_number = s.group(0), s.group(2), s.group(4), s.group(5)+'.aiq', s.group(6)
+                return [total_line, aiq_file, vec_number]
+            # SIG GEN: pxi_3.S[0] .[0] [LTE_eNB_13_Cell_132_Msg2_Msg4_MO_Sig_B1_Ant0] 26/07/2014 02:25:30 80 TTI -20 dBm 2120.0000 MHz
+            # SIG GEN: pxi_3.S[0] .[1] [ Cell_132_RLC_AM_32UE_DL_Ant0] 19/08/2015 15:27:01 640 TTI -20 dBm 2120.0000 MHz
+            # SIG GEN: pxi_3.S[1] .[0] [LTE_eNB_13_Cell_132_Msg2_Msg4_MO_Sig_B1_Ant1] 26/07/2014 02:25:33 80 TTI -20 dBm 2120.0000 MHz
+            # SIG GEN: pxi_3.S[1] .[1] [ Cell_132_RLC_AM_32UE_DL_Ant1] 19/08/2015 15:27:32 640 TTI -20 dBm 2120.0000 MHz
+            s = re.search(r'SIG GEN: *pxi(_[\d\w]+)?\.S\[(\d)\](M)? *\.\[(\d)\] *\[ *([_\w\d]+)\].*', line)
+            if s:
+                total_line, pxi_ant, vector_index, aiq_file = s.group(0), s.group(2), s.group(4), s.group(5)+'.aiq'
+                return [total_line, aiq_file, '']
             return []
         def _parse_switch_vector(line):
-            line = line.strip()
+            ## NR5G
+            # USRP_SYSTEM : All USRPs [[0, 1]] Change TV vector_number: 0  delay: 1.78 TV length 0.08 secs
+            # USRP_SYSTEM : USRP [0] SERVER [0] antenna (0,1) Change TV num: 1  delay: 0 TV 0.0133333333333 secs
+            # USRP_SYSTEM : This siggen 0 is grouped with [0, 1] , group id 0, therfore all siggens were sync to  tv number 1
+            s = re.search(r'USRP_SYSTEM\s*:.*?USRP\s*\[(\d)\].*Change TV\D+(\d)\s.*', line)  # vector
+            if s:
+                total_line, pxi_ant, vector_index = s.group(0), s.group(1), s.group(2)
+                return [total_line, pxi_ant, vector_index]
+            ## LTE
             # SIG GEN: pxi.S[0]: TV changed to [1] LTEA40056_Cell1_1CC_3020
             # SIG GEN: pxi_slave.S[2]: TV changed to [0] LTEA40114_Cell13_3020
             s = re.search(r'SIG GEN: *pxi(_slave)?.S\[(\d)\]: *TV changed to *\[(\d)\].*', line)  # vector
@@ -4308,10 +4315,21 @@ class TestTool:
                 return [total_line, pxi_ant, vector_index]
             return []
         def _parse_wait_cmd(line):
-            line = line.strip()
             s = re.search(r'Waiting for (\d+) secs', line)
             return s.group(1) if s else None
+        def _parse_wait_ind_cmd(line):
+            # Waiting for indication containing 'ACTIVATE IND' in 30 secs
+            s = re.search(r'Waiting for indication containing \'([\w\s]+)\' in (\d+) secs', line)
+            return [s.group(1), s.group(2)] if s else []
+        def _parse_dl_dcch_msg(line):
+            def _dataind(msg):
+                dataind_msg = ' '.join([msg[2*i:2*i+2] for i in range(len(msg)/2)])
+                return 'FORW RRC DATAIND 0 1 01 %s' % dataind_msg
+            # MCI : I: CMPI RRC PCO_IND: UE Id 0, DL-DCCH-Message 220B9C00504CD39FE0F4ABD9...
+            s = re.search(r'MCI.*DL-DCCH-Message (\w+)\W.*', line)
+            return [s.group(0), _dataind(s.group(1))] if s else []
         start_comment = False
+        check_first_dcch_msg = False
         vec_numbers = []
         aiq_files = []
         no_vec_aiq_files = []  # such as  Cell_132_RLC_AM_32UE_DL_Ant1
@@ -4319,12 +4337,13 @@ class TestTool:
             f_write = open(script_file, 'w') if script_file else None
             if f_write: f_write.write('###From: %s\n\n' % html_file)
             for line in f:
+                line = line.strip()
                 pos = line.find('MCI: Running command:')
                 if pos > 0:
                     pos = pos + len('MCI: Running command:')
                     command = self._remove_html_tag(line[pos:].strip())
                     if start_comment: command = '#' + command
-                    elif command.find('Delete') >= 0 or command.startswith('GUMS') or command.startswith('gsen'):
+                    elif command.find('Delete') >= 0 or command.find('Deregister') >= 0 or command.startswith('GUMS') or command.startswith('gsen'):
                         command = '#' + command
                         start_comment = True
                     elif command.lower().find('lcfg dsp ') >= 0 or command.lower().find('lcfg hlc ') >= 0 or command.lower().find('lcfg umb ') >= 0:
@@ -4332,6 +4351,7 @@ class TestTool:
                     elif command.lower().find('activate -1') >= 0:
                         command += '\nwait for "ACTIVATE" timeout 30\n'
                     if f_write: f_write.write(command + '\n')
+                    continue
                 result = _parse_load_vector(line)
                 if result:
                     total_line, aiq_file, vec_number = result
@@ -4339,16 +4359,36 @@ class TestTool:
                     if aiq_file and aiq_file not in aiq_files: aiq_files.append(aiq_file)
                     if not vec_number and aiq_file and aiq_file not in no_vec_aiq_files: no_vec_aiq_files.append(aiq_file)
                     if vec_number and vec_number not in vec_numbers: vec_numbers.append(vec_number)
+                    continue
                 result = _parse_switch_vector(line)
                 if result:
                     total_line, pxi_ant, vector_index = result
                     if f_write:
                         f_write.write('\n###' + self._remove_html_tag(total_line) + '\n')
                         f_write.write('#swiv %d %s\n\n' % (0 if pxi_ant == '0' else 1, vector_index))
+                    if first_dcch_msg_after_switch_vector: check_first_dcch_msg = True
+                    continue
                 result = _parse_wait_cmd(line)
                 if result:
                     seconds = result
                     if f_write: f_write.write('#wait %s\n' % seconds)
+                    continue
+                result = _parse_wait_ind_cmd(line)
+                if result:
+                    ind_cmd, seconds = result
+                    command = '#wait for "%s" timeout %s\n' % (ind_cmd, seconds)
+                    if start_comment: command = '#' + command
+                    if f_write: f_write.write(command + '\n')
+                    continue
+                if check_first_dcch_msg:
+                    result = _parse_dl_dcch_msg(line)
+                    if result:
+                        total_line, dataind_msg = result
+                        if f_write:
+                            f_write.write('\n#' + self._remove_html_tag(total_line) + '\n')
+                            f_write.write('#%s\n\n' % dataind_msg)
+                        check_first_dcch_msg = False
+                        continue
             if f_write: f_write.close()
         return vec_numbers, aiq_files, no_vec_aiq_files
 
@@ -4367,7 +4407,7 @@ class TestTool:
                 src_dir_line = f.readline().strip().split(',')
                 src_dir, dest_dir_name = src_dir_line[0], src_dir_line[1] if len(src_dir_line) > 1 else os.path.basename(src_dir_line[0])
                 if not src_dir: break
-                self.check_folder_exist(src_dir)
+                WinCmd.check_folder_exist(src_dir)
                 src_dirs.append(src_dir)
                 dest_dirs.append(os.path.join(dest_dir, dest_dir_name))
             for line in f:
@@ -4415,8 +4455,8 @@ class TestTool:
         WinCmd.cmd('cleartool catcs > %s' % temp_file, project_path, showcmdwin = False, wait = True)
         if not os.path.isfile(temp_file): raise CmdException('cannot export configspec of view: %s' % project_path)
         WinCmd.cmd('cleartool setcs %s' % temp_file, dynamic_view_path, showcmdwin = False, wait = True)
-        presub_path = os.path.join(dynamic_view_path, 'tm_build_system', 'teamcity')
-        WinCmd.cmd('python presub.pyw', presub_path, showcmdwin = False)
+        tool_path, tool_name = os.path.split(self.get_presub(dynamic_view_path))
+        WinCmd.cmd(r'python "%s"' % tool_name, tool_path, showcmdwin = False)
 
     def obsolete_branches(self, branches, username, days_ago = 200):
         time_now = datetime.now()
@@ -4431,7 +4471,7 @@ class TestTool:
         self.print_('obsolete %d branches totally!' % number)
 
     def extract_branches(self, branches_file, username):
-        self.check_file_exist(branches_file)
+        WinCmd.check_file_exist(branches_file)
         branches = []
         with open(branches_file, 'r') as f:
             for line in f:
@@ -4467,20 +4507,20 @@ class TestTool:
         #remote_proxy = '10.239.145.10:8080'   # use this http proxy in shanghai
         remote_proxy = '10.120.0.111:80'   # use this http proxy in shanghai
         bypass = r'*.extranet.aeroflex.corp;*.aeroflex.corp'
-        self.check_file_exist(self.proxy_tool_file)
+        WinCmd.check_file_exist(self.proxy_tool_file)
         if proxy_enable:
             WinCmd.cmd(r'python "%s" start remote %s %s' % (self.proxy_tool_file, remote_proxy, bypass))
         else:
             WinCmd.cmd(r'python "%s" stop' % self.proxy_tool_file)
 
     def start_proxy_server(self, port, no_hack = False):
-        self.check_file_exist(self.proxy_tool_file)
+        WinCmd.check_file_exist(self.proxy_tool_file)
         title = 'proxy_server_localhost_%d' % port
         WinCmd.cmd(r'python "%s" start local %d %s' % (self.proxy_tool_file, port, 'nohack' if no_hack else ''), showcmdwin = True, minwin = True, wait = False, retaincmdwin = True, title = title)
 
     def stop_proxy_server(self):
         WinCmd.cmd(r'taskkill /fi "IMAGENAME eq cmd.exe" /fi "WindowTitle eq Administrator:  proxy_server*" > nul')
-        self.check_file_exist(self.proxy_tool_file)
+        WinCmd.check_file_exist(self.proxy_tool_file)
         WinCmd.cmd(r'python "%s" stop' % self.proxy_tool_file)
 
     def find_tool_path(self, project_path):
@@ -4531,7 +4571,7 @@ class TestTool:
     def update_result(self):
         command_path = 'C:\\'
         command_file = 'Update_Results.bat'
-        self.check_file_exist(os.path.join(command_path, command_file))
+        WinCmd.check_file_exist(os.path.join(command_path, command_file))
         WinCmd.cmd(command_file, path = command_path, showcmdwin = True, wait = True)
 
     def retrieve_log_pattern(self, src_file, to_file, pattern, start_number, end_number_offset = 20, remove_time = True):
@@ -4559,7 +4599,7 @@ class TestTool:
                         if line.find(end_line_text) >= 0: break
 
     def retrieve_folders(self, base_folder, folders = []):
-        self.check_folder_exist(base_folder)
+        WinCmd.check_folder_exist(base_folder)
         out_folders = []
         for f in [os.path.join(base_folder, x) for x in os.listdir(base_folder) if os.path.isdir(os.path.join(base_folder, x))]:
             if os.path.basename(f) in folders:
@@ -4626,7 +4666,7 @@ class TestTool:
         # <a href="TM500_ExtCp_ssp5_issue.zip">TM500_ExtCp_ssp5_issue.zip</a> 07-Apr-2015 12:45   16K  ZIP archive
         ubi_str = 'ubi' + '0' * (8-len(ubi)) + '%s' % ubi
         assert len(ubi) in [5, 6] and int(ubi) > 0, 'error ubi number ' % ubi_str
-        self.check_folder_exist(output_path)
+        WinCmd.check_folder_exist(output_path)
         folder = os.path.join(output_path, 'ubi%s' % ubi)
         if not os.path.isdir(folder): WinCmd.make_dir(folder)
         #url = 'http://emea-clearquest/attachments/%s' % ubi_str
@@ -4661,7 +4701,7 @@ class TestTool:
         target_file = os.path.join(output_path, '%s_%s%s' % (filename[0], run_number, filename[1]))
         status = self._download_file(file_url, target_file)
         if status:
-            self.check_file_exist(target_file)
+            WinCmd.check_file_exist(target_file)
             dest_dir = os.path.splitext(target_file)[0]
             if not os.path.isdir(dest_dir): os.makedirs(dest_dir)
             ZipUtil.unzip(target_file, dest_dir)
@@ -4673,7 +4713,7 @@ class TestTool:
     def rrc_encode(self, project_path, clipboard = False, file_name_id = '0'):
         tool_path = self.find_tool_path(project_path)
         rrc_tool = os.path.join(tool_path, 'rrc_encoder.exe')
-        self.check_file_exist(rrc_tool)
+        WinCmd.check_file_exist(rrc_tool)
         if clipboard:
             data_in = WinCmd.get_clip_text()
             rrc_file = self.get_temp_filename(suffix = '_rrc')
@@ -4681,7 +4721,7 @@ class TestTool:
             self.print_('load data from clipboard and save to file: %s' % rrc_file)
         else:
             rrc_file = self._rrc_file(file_name_id)
-            self.check_file_exist(rrc_file)
+            WinCmd.check_file_exist(rrc_file)
         temp_file = self.get_temp_filename(suffix = '_rrc_encode')
         if os.path.isfile(temp_file): os.remove(temp_file)
         WinCmd.cmd('%s %s > %s' % (rrc_tool, rrc_file, temp_file), showcmdwin = True, minwin = True, wait = True)
@@ -4698,7 +4738,7 @@ class TestTool:
     def rrc_decode(self, project_path, file_name_id = '0', message_name = ''):
         tool_path = self.find_tool_path(project_path)
         rrc_tool = os.path.join(tool_path, 'rrc_decoder.exe')
-        self.check_file_exist(rrc_tool)
+        WinCmd.check_file_exist(rrc_tool)
         data_in = WinCmd.get_clip_text()
         self.print_(data_in)
         r = re.search('dataind\s+(\d\s)?1\s+00\s+((\w{2}\s+)+\w{2})$', data_in.lower())
@@ -4731,7 +4771,8 @@ class TestTool:
                           r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt',
                           r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
                           r'batch_CUE_NAS_NR5G_ENDC_2CELL_120KHz_Basic.txt',
-                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt']
+                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
+                          r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt']
         batches = [r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
                    r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
                    r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL_120Khz.txt',
@@ -4752,12 +4793,12 @@ class TestTool:
         # restart the process 'rdpclip.exe'
         tool_file = r'C:\Windows\System32\rdpclip.exe'
         filename = os.path.basename(tool_file)
-        self.check_file_exist(tool_file)
+        WinCmd.check_file_exist(tool_file)
         WinCmd.kill(filename)
         WinCmd.process(tool_file)
 
     def clean_build_files(self, project_path):
-        self.check_folder_exist(os.path.join(project_path, 'tm_build_system'))
+        WinCmd.check_folder_exist(os.path.join(project_path, 'tm_build_system'))
         build_dirs = []
         for root, dirs, files in os.walk(project_path):
             if 'build' in dirs:
@@ -4769,7 +4810,7 @@ class TestTool:
         self.print_('removed %d build folders' % len(build_dirs))
 
     def parse_build_logs(self, build_file):
-        self.check_file_exist(build_file)
+        WinCmd.check_file_exist(build_file)
         build_start_str = 'scons: Building targets'
         build_success_str = 'scons: done building targets'
         build_error_str = 'scons: building terminated because of errors'
