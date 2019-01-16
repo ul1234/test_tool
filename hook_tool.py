@@ -44,11 +44,12 @@ class HookTool:
                         f_write.write(line)
         if have_changed:
             bak_file = '%s.bak' % target_file
-            WinCmd.rename_files(target_file, bak_file, remove_dest_first = True)
-            WinCmd.rename_files(tmp_file, target_file)
+            if not os.path.isfile(bak_file): WinCmd.rename_files(target_file, bak_file)
+            WinCmd.rename_files(tmp_file, target_file, remove_dest_first = True)
             self.changed_files.append(target_file)
             self.print_('Changed file successfully: %s' % target_file)
         else:
+            WinCmd.del_file(tmp_file)
             self.print_('Warning: file %s no change.' % target_file, force_output = True)
 
     def restore_changed_files(self):

@@ -1533,10 +1533,12 @@ class CmdLine(CmdLineWithAbbrev):
         self.tool.print_('%s files finished.' % cmd)
 
     @options([make_option("-v", "--dynamic_view", action = "store", type = "string", dest = "dynamic_view", default = "Z:", help = "dynamic view path"),
+              make_option("-0", "--manual", action = "store_true", dest = "manual", default = False, help = "do not change, manual select files and builds"),
+              make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
              ], "[-v dynamic_view_path] project_path")
     @min_args(1)
     def do_presub(self, args, opts = None):
-        self.tool.presub(args[0], opts.dynamic_view)
+        self.tool.presub(args[0], opts.dynamic_view, opts.manual, opts.debug)
         self.tool.print_('presub run ok!')
 
     @options([make_option("-u", "--username", action = "store", type = "string", dest = "username", default = "swang2", help = "username"),
@@ -4465,14 +4467,57 @@ class TestTool:
         if not hasattr(self, 'code_check'): self.code_check = CodeCheck()
         self.code_check.check(files, output_file)
 
-    def presub(self, project_path, dynamic_view_path):
+    def _copy_teamcity_folder(self, project_path):
+        teamcity_path = os.path.join(project_path, self.teamcity_rel_paths[0])
+        teamcity_copy_path = os.path.join(os.path.dirname(teamcity_path), 'teamcity_copy')
+        self.print_('copy folder and run: %s...' % teamcity_path)
+        WinCmd.copy_dir(teamcity_path, teamcity_copy_path, empty_dest_first = True)
+        return teamcity_copy_path
+
+    def teamcity_remote_run(self, project_path, select_batches_key = '', cell_1_batch_one_run = False, debug_output = False):
+        teamcity_copy_path = self._copy_teamcity_folder(project_path)
+        remote_run_tool = os.path.join(teamcity_copy_path, 'remote_run.pyw')
+        teamcity_ini_file = os.path.join(os.path.dirname(remote_run_tool), 'settings.ini')
+        teamcity_ini = TeamcityIni(teamcity_ini_file)
+        if select_batches_key:
+            select_keys = []
+            for key in select_batches_key.split('|'):
+                if key not in self.sanity_batches_dict.keys(): raise CmdException('invalid select batches %s' % key)
+                select_keys.append(key)
+        else:
+            select_keys = self.sanity_batches_dict.keys()
+        runs = []
+        if '2cell' in select_keys:
+            runs.append((self.sanity_batches_dict['2cell'], self.sanity_batches_config['2cell']))
+            select_keys.remove('2cell')
+        if not cell_1_batch_one_run and 'basic' in select_keys:
+            runs.append((self.sanity_batches_dict['basic'], self.sanity_batches_config['default']))
+            select_keys.remove('basic')
+        if select_keys: runs.append((reduce(list.__add__, [self.sanity_batches_dict[k] for k in select_keys], []), self.sanity_batches_config['default']))
+        self.print_('Total %d runs.' % len(runs))
+        for i, (run, config) in enumerate(runs):
+            self.print_('Start to run %d: (%s) %s ...' % (i+1, config, run))
+            batches = [os.path.join(self.sanity_batch_path, r) for r in run]
+            teamcity_ini.set_batches(batches, config)
+            hook_tool = HookToolCacheManager(remote_run_tool, debug_output = debug_output)
+            hook_tool.run()
+            #raw_input(r'press any key to continue...')
+            self.print_('End submit running %d.' % (i+1))
+
+    def presub(self, project_path, dynamic_view_path, manual = False, debug_output = False):
         temp_file = self.get_temp_filename()
         if os.path.isfile(temp_file): WinCmd.del_file(temp_file)
         WinCmd.cmd('cleartool catcs > %s' % temp_file, project_path, showcmdwin = False, wait = True)
         if not os.path.isfile(temp_file): raise CmdException('cannot export configspec of view: %s' % project_path)
         WinCmd.cmd('cleartool setcs %s' % temp_file, dynamic_view_path, showcmdwin = False, wait = True)
-        tool_path, tool_name = os.path.split(self.get_presub(dynamic_view_path))
-        WinCmd.cmd(r'python "%s"' % tool_name, tool_path, showcmdwin = False)
+        if manual:
+            tool_path, tool_name = os.path.split(self.get_presub(dynamic_view_path))
+            WinCmd.cmd(r'python "%s"' % tool_name, tool_path, showcmdwin = False)
+        else:
+            teamcity_copy_path = self._copy_teamcity_folder(dynamic_view_path)
+            presub_tool = os.path.join(teamcity_copy_path, 'presub.pyw')
+            hook_tool = HookToolCacheManager(presub_tool, debug_output = debug_output)
+            hook_tool.run()
 
     def obsolete_branches(self, branches, username, days_ago = 200):
         time_now = datetime.now()
@@ -4792,35 +4837,6 @@ class TestTool:
         sanity_source_batches = [os.path.join(batch_path, b) for b in self.sanity_batches]
         WinCmd.copy_files(sanity_source_batches, sanity_dir, empty_dir_first = False)
         return self.all_batches
-
-    def teamcity_remote_run(self, project_path, select_batches_key = '', cell_1_batch_one_run = False, debug_output = False):
-        remote_run_tool = self.get_remote_run(project_path)
-        teamcity_ini_file = os.path.join(os.path.dirname(remote_run_tool), 'settings.ini')
-        teamcity_ini = TeamcityIni(teamcity_ini_file)
-        if select_batches_key:
-            select_keys = []
-            for key in select_batches_key.split('|'):
-                if key not in self.sanity_batches_dict.keys(): raise CmdException('invalid select batches %s' % key)
-                select_keys.append(key)
-        else:
-            select_keys = self.sanity_batches_dict.keys()
-        runs = []
-        if '2cell' in select_keys:
-            runs.append((self.sanity_batches_dict['2cell'], self.sanity_batches_config['2cell']))
-            select_keys.remove('2cell')
-        if not cell_1_batch_one_run and 'basic' in select_keys:
-            runs.append((self.sanity_batches_dict['basic'], self.sanity_batches_config['default']))
-            select_keys.remove('basic')
-        if select_keys: runs.append((reduce(list.__add__, [self.sanity_batches_dict[k] for k in select_keys], []), self.sanity_batches_config['default']))
-        self.print_('Total %d runs.' % len(runs))
-        for i, (run, config) in enumerate(runs):
-            self.print_('Start to run %d: (%s) %s ...' % (i+1, config, run))
-            batches = [os.path.join(self.sanity_batch_path, r) for r in run]
-            teamcity_ini.set_batches(batches, config)
-            hook_tool = HookToolCacheManager(remote_run_tool, debug_output = debug_output)
-            hook_tool.run()
-            #raw_input(r'press any key to continue...')
-            self.print_('End submit running %d.' % (i+1))
 
     @use_system32_on_64bit_system
     def fix_remote_copy_paste(self):
