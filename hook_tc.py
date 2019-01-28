@@ -24,14 +24,28 @@ class TeamcityIni:
         self.ini.set('PathSelectPanel', 'ftp-folder', r'tm_build_system\build\ftp')
         self.write_back()
 
-    def set_batches(self, batches, config = ''):
+    def _rav_id_from_name(self, rav = ''):
+        RAV_ID_TABLE = {'RAV99-2': '211', 'RAV99-1': '210', 'RAV98-2': '213', 'RAV98-1': '212', 'RAV95-2': '207',
+                        'RAV95-1': '208', 'RAV94': '160', 'RAV100-2': '215', 'RAV100-1': '216'}
+        rav = rav.upper()
+        if not rav in RAV_ID_TABLE.keys():
+            if rav != '':
+                WinCmd.print_('cannot find RAV id for %s, use Any instead.' % rav)
+            rav_id = 'Any'
+        else:
+            rav_id = RAV_ID_TABLE[rav]
+        return rav_id
+        
+    def set_batches(self, batches, config = '', rav = ''):
         # batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt:MK4.X::RemoteRun_BinariesTestNr5g_BinariesRun:Any
+        # batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt:MK4.X::RemoteRun_BinariesTestNr5g_BinariesRun:211
         # batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt:MK4.X:2CELL4G5G:RemoteRun_BinariesTestNr5g_BinariesRun:Any
+        rav_id = self._rav_id_from_name(rav)
         selected_batches = []
         selected_folders = []
         for batch in batches:
             batch_path, batch_name = os.path.dirname(batch), os.path.basename(batch)
-            selected_batches.append(':'.join([batch_name, 'MK4.X', config, 'RemoteRun_BinariesTestNr5g_BinariesRun', 'Any']))
+            selected_batches.append(':'.join([batch_name, 'MK4.X', config, 'RemoteRun_BinariesTestNr5g_BinariesRun', rav_id]))
             selected_folders.append(batch_path)
         self.ini.set('Settings', '_selectedBatchFiles', ','.join(selected_batches))
         self.ini.set('Settings', '_selectedBatchFolders', ','.join(selected_folders))
