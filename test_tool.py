@@ -1224,17 +1224,17 @@ class CmdLine(CmdLineWithAbbrev):
         self.tc.gen_all_upload_files(mk)
         self.tc.run_tc()
 
-    @options([make_option("-b", "--select_batches_key", action = "store", type = "string", dest = "select_batches_key", default = "", help = "sanity batches: 15k|120k|basic|2cell"),
+    @options([make_option("-b", "--select_batches_key", action = "store", type = "string", dest = "select_batches_key", default = "", help = "sanity batches: 15k|120k|basic|2cell|3cell"),
               make_option("-1", "--cell_1_batch_one_run", action = "store_true", dest = "cell_1_batch_one_run", default = False, help = "cell 1 batches, run in one go"),
               make_option("-r", "--rav", action = "store", type = "string", dest = "rav", default = "", help = "rav selected, RAV99-2, RAV100-1, etc."),
               make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
-             ], "[-b batches] [-1] [-d] [-r RAV] project_path  (default: 3 runs (2cell, basic, 15k+120k))")
+             ], "[-b batches] [-1] [-d] [-r RAV] project_path  (default: 4 runs (2cell, 3cell, basic, 15k+120k))")
     @min_args(1)
     def do_remote_run_sanity(self, args, opts = None):
         project_path = args[0]
         WinCmd.check_folder_exist(project_path)
         self._set_default_project_path(project_path)
-        self.tool.teamcity_remote_run(project_path, opts.select_batches_key, opts.cell_1_batch_one_run, opts.rav, opts.debug)
+        self.tool.teamcity_remote_run(project_path, self._split_option(opts.select_batches_key), opts.cell_1_batch_one_run, opts.rav, opts.debug)
 
     @options([make_option("-c", "--config_pattern", action = "store", type = "string", dest = "config_pattern", default = "", help = "re config pattern to filter config files"),
              ], "[-c pattern]")
@@ -2084,17 +2084,17 @@ class TestTool:
         if clear_signals: self.clear_signals()
         # teamcity
         self.sanity_batch_path = r'C:\wang\03.Batch\sanity'
-        self.sanity_batches_config = {'2cell': '2CELL4G5G', 'default': ''}
+        self.sanity_batches_config = {'2cell': '2CELL4G5G', '3cell': '3CELL4G5G', 'default': ''}
         self.sanity_batches_dict = {'2cell': [r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
                                               r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
                                               r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt'],
+                                    '3cell': [r'batch_CUE_NAS_NR5G_ENDC_3CELL_June18_120KHz_Basic.txt'],
                                     '15k': [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt'],
                                     '120k': [r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt'],
                                     'basic': [r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt']}
         self.sanity_batches = reduce(list.__add__, self.sanity_batches_dict.values(), [])
         self.other_batches = [r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
                               r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
-                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_120KHz_Basic.txt',
                               r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL_120Khz.txt',
                               r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL.txt']
         self.all_batches = self.sanity_batches + self.other_batches
@@ -4482,15 +4482,18 @@ class TestTool:
         teamcity_ini = TeamcityIni(teamcity_ini_file)
         if select_batches_key:
             select_keys = []
-            for key in select_batches_key.split('|'):
+            for key in select_batches_key:
                 if key not in self.sanity_batches_dict.keys(): raise CmdException('invalid select batches %s' % key)
                 select_keys.append(key)
         else:
             select_keys = self.sanity_batches_dict.keys()
         runs = []
-        if '2cell' in select_keys:
-            runs.append((self.sanity_batches_dict['2cell'], self.sanity_batches_config['2cell']))
-            select_keys.remove('2cell')
+        config_keys = self.sanity_batches_config.keys()
+        config_keys.remove('default')
+        for key in config_keys:
+            if key in select_keys:
+                runs.append((self.sanity_batches_dict[key], self.sanity_batches_config[key]))
+                select_keys.remove(key)
         if not cell_1_batch_one_run and 'basic' in select_keys:
             runs.append((self.sanity_batches_dict['basic'], self.sanity_batches_config['default']))
             select_keys.remove('basic')
