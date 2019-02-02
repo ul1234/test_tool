@@ -201,6 +201,18 @@ class WinCmd:
         return True
 
     @staticmethod
+    def sort_file(filename, target_file = ''):
+        WinCmd.check_file_exist(filename)
+        temp_file_flag = not target_file
+        output_file_name, output_file_ext = os.path.splitext(filename)
+        target_file = target_file or ('%s_sort_temp%s' % (output_file_name, output_file_ext))
+        WinCmd.cmd(r'sort /REC 65535 %s > %s' % (os.path.basename(filename), target_file), os.path.dirname(filename), showcmdwin = True, minwin = True, wait = True)
+        WinCmd.check_file_exist(target_file)
+        if temp_file_flag:
+            WinCmd.del_file(filename)
+            WinCmd.rename_files(target_file, filename)
+
+    @staticmethod
     def cmd(command, path = None, showcmdwin = False, minwin = False, wait = True, retaincmdwin = False, title = ''):
         path_str = r'cd /d "%s" & ' % path if path else ''
         if showcmdwin:

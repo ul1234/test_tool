@@ -26,14 +26,30 @@ class OptParser(OptionParser):
     def error(self, msg):
         raise OptParseError(msg)
 
+    def format_help(self):
+        return OptionParser.format_help(self) + (self._example if hasattr(self, '_example') else '')
+
+    def set_example(self, example = ''):
+        if example:
+            first_line_found = False
+            self._example = '\nExamples:\n'
+            for line in example.split('\n'):
+                if not first_line_found:
+                    if not line.strip(): continue
+                    align_leading_spaces = len(line) - len(line.lstrip())
+                    first_line_found = True
+                remain_leading_spaces = max(0, len(line) - len(line.lstrip()) - align_leading_spaces)
+                self._example += ' '*remain_leading_spaces + line.strip() + '\n'
+
 # decoration function
-def options(option_list, usage = ''):
+def options(option_list, usage = '', example = ''):
     _abbrev_class = CmdLineWithAbbrev
     if not isinstance(option_list, list):
         option_list = [option_list]
     option_list += _abbrev_class.ALL_OPTIONS_ADD
     def option_setup(func):
         optParser = OptParser(option_list = option_list)
+        optParser.set_example(example)
         func_name = func.__name__[3:]
         usage_already_set = False
         if hasattr(_abbrev_class, 'ABBREV'):
@@ -63,7 +79,8 @@ def options(option_list, usage = ''):
                 print traceback.format_exc()
                 optParser.print_help()
                 return
-        new_func.__doc__ = '%s\n%s' % (func.__doc__, optParser.format_help())
+        func_doc = ('%s\n' % func.__doc__) if func.__doc__ else ''
+        new_func.__doc__ = '%s%s' % (func_doc, optParser.format_help())
         return new_func
     return option_setup
 
@@ -82,7 +99,7 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('run_bat', 'bat'), ('find_hde_vector', 'vec'), ('html_to_script', 'h2s'), ('split_files', 'spl'), ('open_case', 'oc'), ('load_bin', 'lb'),
               ('copy_case', 'cc'), ('delete_binary', 'dbin'), ('gen_rav_priv_bin', 'ravbin'), ('gen_rav_cases_batch', 'ravbatch'), ('gen_cpu_sym', 'cpu'),
               ('copy_result', 'cr'), ('cmp_rslt', 'cmrlt'), ('open_soft', 'soft'), ('msg_identify', 'msg'), ('copy_change_files', 'cchange'),
-              ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_cases', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
+              ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_logs', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
               ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'urav'), ('build_py', 'bpy'),
               ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('remote_run_sanity', 'rr'),
               ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'),
@@ -244,7 +261,11 @@ class CmdLine(CmdLineWithAbbrev):
 
     @options([make_option("-s", "--test_string", action = "store", type = "string", dest = "test_string", default = "", help = "test string"),
               make_option("-t", "--test_bool", action = "store_true", dest = "test_bool", default = False, help = "test bool"),
-             ], "[-s string] [-t bool] args")
+             ], "[-s string] [-t bool] args",
+             example = '''
+                1) test for example options
+                2) test -s aaa -t
+                    output aaa and True ''')
     @min_args(1)
     def do_test(self, args, opts = None):
         self.tool.print_('test_string is %s. test_bool is %s. args is %s' % (opts.test_string, opts.test_bool, args[0]))
@@ -640,6 +661,31 @@ class CmdLine(CmdLineWithAbbrev):
                     self._runcmd('split_files -s %s -i %d %s %s %s' % (opts.piece_size, index, '-x' if opts.excel else '', '-b' if opts.bytes_align else '', f))
                 break
         if not files: self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
+
+    @options([make_option("-r", "--regex", action = "store", type = "string", dest = "regex", default = "", help = "regular expression to search"),
+              make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
+              make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file"),
+              make_option("-l", "--lines", action = "store", type = "string", dest = "lines", default = "0", help = "lines before and after the filtered line"),
+              make_option("-s", "--sort", action = "store_true", dest = "sort", default = False, help = "sort the output logs"),
+             ], "[-p path] [-r regex] [-l 0] [-o output_file] [-s] {files(regex)}")
+    @min_args(1)
+    def do_filter_logs(self, args, opts = None):
+        files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args], sort_by_time = True)
+        if not files:
+            self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
+        else:
+            output_file_name, output_file_ext = os.path.splitext(files[0])
+            output_file = opts.output or ('%s_filter%s' % (output_file_name, output_file_ext))
+            if os.path.isfile(output_file): WinCmd.del_file(output_file)
+            filtered_lines = 0
+            for f in files:
+                filtered_lines += self.tool.filter_in_file(f, opts.regex, int(opts.lines), output_file, file_flag = not opts.sort)
+            if filtered_lines:
+                WinCmd.check_file_exist(output_file)
+                if opts.sort: WinCmd.sort_file(output_file)
+                self.tool.print_('Filtered %d lines among %d files to %s successfully!' % (filtered_lines, len(files), output_file))
+            else:
+                self.tool.print_('cannot find "%s" among %d files.' % (opts.regex, len(files)))
 
     @options([make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
              ], "[-p path] {files(regex)}")
@@ -1229,7 +1275,12 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-1", "--cell_1_batch_one_run", action = "store_true", dest = "cell_1_batch_one_run", default = False, help = "cell 1 batches, run in one go"),
               make_option("-r", "--rav", action = "store", type = "string", dest = "rav", default = "", help = "rav selected, RAV99-2, RAV100-1, etc."),
               make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
-             ], "[-b batches] [-1] [-d] [-r RAV] project_path  (default: 3 runs (2cell, basic, 15k+120k))")
+             ], "[-b batches] [-1] [-d] [-r RAV] project_path  (default: 3 runs (2cell, basic, 15k+120k))",
+             example = '''
+                1) rr D:\Projects\swang2_view_cue_tot_feature_2
+                    submit 3 remote runs, 1--basic 1cell batch, 2--15k+120k 1cell batch, 3--2cell batch
+                2) rr D:\Projects\swang2_view_cue_tot_feature_2 -b 2cell
+                    submit 2cell batch sanity run ''')
     @min_args(1)
     def do_remote_run_sanity(self, args, opts = None):
         project_path = args[0]
@@ -1537,7 +1588,12 @@ class CmdLine(CmdLineWithAbbrev):
     @options([make_option("-v", "--dynamic_view", action = "store", type = "string", dest = "dynamic_view", default = "Z:", help = "dynamic view path, default: Z:/"),
               make_option("-0", "--manual", action = "store_true", dest = "manual", default = False, help = "do not change, manual select files and builds"),
               make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
-             ], "[-0] [-v dynamic_view_path] [-d] project_path")
+             ], "[-0] [-v dynamic_view_path] [-d] project_path",
+             example = '''
+                1) presub D:\Projects\swang2_view_cue_tot_feature_2
+                    run presub for the folder, use default Z: as dynamic view path
+                2) presub D:\Projects\swang2_view_cue_tot_feature_2 -v X:
+                    run presub for the folder, use X: as dynamic view path ''')
     @min_args(1)
     def do_presub(self, args, opts = None):
         self.tool.presub(args[0], opts.dynamic_view, opts.manual, opts.debug)
@@ -2259,7 +2315,7 @@ class TestTool:
         if only_test_valid: return ''  # not a valid path
         raise CmdException('Path not found: both %s and %s.' % (rel_path, abs_path))
 
-    def get_re_files(self, file_patterns, exclude_dir = True):
+    def get_re_files(self, file_patterns, exclude_dir = True, sort_by_time = False):
         ''' retrieve all files that indicated by regular expressions '''
         file_exist = os.path.isfile if exclude_dir else os.path.exists
         re_files = []
@@ -2280,7 +2336,13 @@ class TestTool:
                 abs_f = os.path.join(self.get_abs_path(path), file)
                 if file_exist(abs_f) and not abs_f in re_files:
                     re_files.append(abs_f)
-        return list(set(re_files))
+        files = list(set(re_files))
+        files.sort()
+        if sort_by_time and len(files) > 1:
+            files_mtime = [(os.stat(f).st_mtime, f) for f in files]
+            files_mtime.sort()  # from old to new
+            files = [f for t, f in files_mtime]
+        return files
 
     def get_re_cases(self, re_cases):
         cases = []
@@ -2685,8 +2747,7 @@ class TestTool:
             src_f = os.path.basename(f)
             dest_f = '%s_%s.txt' % (os.path.splitext(src_f)[0], domain)
             WinCmd.cmd(r'loganalyse.exe %s %s > %s' % (flag, src_f, dest_f), os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
-            if not no_sort:
-                WinCmd.cmd(r'sort /REC 65535 %s > nul' % dest_f, os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
+            if not no_sort: WinCmd.sort_file(os.path.join(os.path.dirname(f), dest_f))
 
     def gen_cpu_symbol(self, project_or_bin_path, cpu_num, reg_value = '', c66cpu_type = False):
         ti_tool = 'nm6x.exe'
@@ -2795,6 +2856,27 @@ class TestTool:
             if os.path.isfile(f): WinCmd.copy_file(f, target_bin_folder)
             else: WinCmd.copy_dir(f, target_bin_folder, empty_dest_first = False, include_src_dir = True)
         return product
+
+    def filter_in_file(self, filename, regex, lines_around, output_file, file_flag = True):
+        filtered_line_num = []
+        with open(filename, 'r') as f:
+            for line_num, line in enumerate(f):
+                if re.search(regex, line, flags = re.IGNORECASE):
+                    filtered_line_num.append(line_num)
+        if filtered_line_num:
+            target_line_num = reduce(lambda x,y: x+range(y-lines_around, y+lines_around+1), filtered_line_num, [])
+            target_line_num = filter(lambda x: x >= 0, list(set(target_line_num)))
+            target_line_num.sort()
+            with open(output_file, 'a') as f_write:
+                if file_flag: f_write.write('\n%s %s %s\n\n' % ('#'*20, filename, '#'*20))
+                with open(filename, 'r') as f:
+                    target_line = target_line_num.pop(0)
+                    for line_num, line in enumerate(f):
+                        if line_num == target_line:
+                            if len(target_line_num) == 0: break
+                            target_line = target_line_num.pop(0)
+                            f_write.write(line)
+        return len(filtered_line_num)
 
     def search_in_file(self, filename, regex, piece_size = 30, bytes_align = False, excel_file = False):
         filesize = os.path.getsize(filename)
