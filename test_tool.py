@@ -85,7 +85,8 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_cases', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
               ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'urav'), ('build_py', 'bpy'),
               ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('remote_run_sanity', 'rr'),
-              ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'), ('EOF', 'q'), ('help', 'h')]
+              ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'),
+              ('EOF', 'q'), ('EOF', 'quit'), ('EOF', 'exit'), ('help', 'h')]
 
     MONITOR_CMD = [] #['env', 'run_batch', 'build', 'update_rav']
     REMOTE_CMD = ['remote']
@@ -1228,7 +1229,7 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-1", "--cell_1_batch_one_run", action = "store_true", dest = "cell_1_batch_one_run", default = False, help = "cell 1 batches, run in one go"),
               make_option("-r", "--rav", action = "store", type = "string", dest = "rav", default = "", help = "rav selected, RAV99-2, RAV100-1, etc."),
               make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
-             ], "[-b batches] [-1] [-d] [-r RAV] project_path  (default: 4 runs (2cell, 3cell, basic, 15k+120k))")
+             ], "[-b batches] [-1] [-d] [-r RAV] project_path  (default: 3 runs (2cell, basic, 15k+120k))")
     @min_args(1)
     def do_remote_run_sanity(self, args, opts = None):
         project_path = args[0]
@@ -2081,14 +2082,15 @@ class TestTool:
         self.mirror_transfer_folder = r'\\ltn3-apd-nas01\data\SHA2\swang2\transfer'  # shanghai
         self.signal_folder = os.path.join(self.transfer_folder, 'signal')
         self.remote_copy_folder = os.path.join(self.transfer_folder, 'clipboard')
-        if clear_signals: self.clear_signals()
+        ## disable the clear signals, the signal monitors cannot be used
+        #if clear_signals: self.clear_signals()
         # teamcity
         self.sanity_batch_path = r'C:\wang\03.Batch\sanity'
         self.sanity_batches_config = {'2cell': '2CELL4G5G', '3cell': '3CELL4G5G', 'default': ''}
         self.sanity_batches_dict = {'2cell': [r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
                                               r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
                                               r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt'],
-                                    '3cell': [r'batch_CUE_NAS_NR5G_ENDC_3CELL_June18_120KHz_Basic.txt'],
+                                    #'3cell': [r'batch_CUE_NAS_NR5G_ENDC_3CELL_June18_120KHz_Basic.txt'],
                                     '15k': [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt'],
                                     '120k': [r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt'],
                                     'basic': [r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt']}

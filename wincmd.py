@@ -304,6 +304,36 @@ class WinCmd:
                     if not adNode: break
 
 
+class Profile:
+    _profile_dict = {}
+
+    @staticmethod
+    def print_(str, output_time = False):
+        WinCmd.print_(str, output_time)
+
+    @staticmethod
+    def start(id = 'default', name = '', show = True):
+        Profile._profile_dict[id] = time.time()
+        if show: Profile.print_('[%s] %s start: %.2fs' % (id, name, Profile._profile_dict[id]))
+
+    @staticmethod
+    def restart(id = 'default', name = '', show = True):
+        now = time.time()
+        if not id in Profile._profile_dict.keys(): raise Excpetion('no start for %s' % id)
+        elapse = now - Profile._profile_dict[id]
+        if show: Profile.print_('[%s] %s: %.2fs. Elapse: %.2fs' % (id, name, now, elapse))
+        Profile._profile_dict[id] = now
+        return elapse
+
+    @staticmethod
+    def end(id = 'default', name = '', show = True):
+        now = time.time()
+        if not id in Profile._profile_dict.keys(): raise Excpetion('no start for %s' % id)
+        elapse = now - Profile._profile_dict[id]
+        if show: Profile.print_('[%s] %s: %.2fs. Elapse: %.2fs' % (id, name, now, elapse))
+        return elapse
+
+
 if __name__ == '__main__':
     #WinCmd.copy_dir(r'E:\11.Temp\test1\11', r'E:\11.Temp\test1\22', True)
     print WinCmd.cmp_folder(r'E:\tool\temp\All Batch', r'E:\tool\All Batch')
