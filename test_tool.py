@@ -666,7 +666,7 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
               make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file"),
               make_option("-l", "--lines", action = "store", type = "string", dest = "lines", default = "0", help = "lines before and after the filtered line"),
-              make_option("-s", "--sort", action = "store_true", dest = "sort", default = False, help = "sort the output logs"),
+              make_option("-0", "--no_sort", action = "store_true", dest = "no_sort", default = False, help = "do not sort the output logs"),
              ], "[-p path] [-r regex] [-l 0] [-o output_file] [-s] {files(regex)}")
     @min_args(1)
     def do_filter_logs(self, args, opts = None):
@@ -679,10 +679,10 @@ class CmdLine(CmdLineWithAbbrev):
             if os.path.isfile(output_file): WinCmd.del_file(output_file)
             filtered_lines = 0
             for f in files:
-                filtered_lines += self.tool.filter_in_file(f, opts.regex, int(opts.lines), output_file, file_flag = not opts.sort)
+                filtered_lines += self.tool.filter_in_file(f, opts.regex, int(opts.lines), output_file, file_flag = opts.no_sort)
             if filtered_lines:
                 WinCmd.check_file_exist(output_file)
-                if opts.sort: WinCmd.sort_file(output_file)
+                if not opts.no_sort: WinCmd.sort_file(output_file)
                 self.tool.print_('Filtered %d lines among %d files to %s successfully!' % (filtered_lines, len(files), output_file))
             else:
                 self.tool.print_('cannot find "%s" among %d files.' % (opts.regex, len(files)))
