@@ -1,0 +1,39 @@
+mode = PDCP_MODE
+proxy= proxy_no
+start_script=normal
+
+batch_constants_start
+SCXT = ['0 NR']
+RC_LC_MAPPING = ['0']
+CONF_RADIO_MAPPING = ['SCS 1 0'] #[‘SCS FrequencyRageCategory SubCarrierSpacing’] & Index-0 in the list corresponds to RC0
+RAT=5G
+RAT_VERSION = NR5G
+batch_constants_stop
+
+func_begining_of_test_start
+
+mci.run_command("forw l2 setRadioContext 0")
+mci.run_command("forw l1 setRadioContext 0")
+#mci.run_command("SETP L2_RLC_UL_AM_AUTO_ACK_WIN_SIZE 1") 
+mci.run_command("SETP L1_NR5G_VECTOR_GENERATED_BCH_DATA 1")
+#mci.run_command("SETP L1_NR5G_DISABLE_BCH_CONFIG 0")
+mci.run_command("SETP MTE_NR_3GPP_JUN18_SUPPORTED 0")
+mci.run_command("SETP L2_NR_3GPP_JUN18_SUPPORTED 0")
+mci.run_command("SETP L0_DL_CTRL_NR_3GPP_JUN18_SUPPORTED 0")
+mci.run_command("SETP L1_NR_3GPP_JUN18_SUPPORTED 0")
+mci.run_command("SETP L0_UL_CTRL_NR_3GPP_JUN18_SUPPORTED 0")
+
+#mci.run_command("ladd hlc all-ac  0 0 0 0 0 0 0 0x00001000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
+#mci.run_command("lcfg hlc all  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0x00E40001 0 0 0 0 0 0 0 0 0 0 0 0 0x00000020 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0")
+func_begining_of_test_stop
+
+func_reset_start
+func_reset_stop
+
+
+tests_start
+
+#### 16 QAM Scripted
+99923_NR5G_PDCP_15kHz_SCS_20Mhz_SISO_SSB_8_PDSCH_Scripted_Grant_RA_1_106RBs_16QAM_MCS16_Len10.txt
+
+tests_stop

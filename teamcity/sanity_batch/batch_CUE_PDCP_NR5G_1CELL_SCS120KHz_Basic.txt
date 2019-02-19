@@ -1,0 +1,75 @@
+mode = PDCP_MODE
+proxy= proxy_no
+start_script=normal
+
+batch_constants_start
+SCXT = ['0 NR']
+RC_LC_MAPPING = ['0']
+##					  SCS <FR> 2 means Numerology=3 be applied; 1 means Numerology=3 be applied
+CONF_RADIO_MAPPING = ['SCS 2']
+batch_constants_stop
+
+func_begining_of_test_start
+
+mci.run_command("forw l2 setRadioContext 0")
+mci.run_command("forw l1 setRadioContext 0")
+#mci.run_command("SETP L2_RLC_UL_AM_AUTO_ACK_WIN_SIZE 1") 
+mci.run_command("SETP L1_NR5G_VECTOR_GENERATED_BCH_DATA 1")
+#mci.run_command("SETP L1_NR5G_DISABLE_BCH_CONFIG 0")
+# mci.run_command("SETP NR_L0_DL_CTRL_NUMEROLOGY3_SEARCH_SPACE_SWITCH_AFTER_MSG4 1")
+mci.run_command("SETP MTE_NR_3GPP_JUN18_SUPPORTED 0")
+mci.run_command("SETP L2_NR_3GPP_JUN18_SUPPORTED 0")
+mci.run_command("SETP L0_DL_CTRL_NR_3GPP_JUN18_SUPPORTED 0")
+mci.run_command("SETP L1_NR_3GPP_JUN18_SUPPORTED 0")
+mci.run_command("SETP L0_UL_CTRL_NR_3GPP_JUN18_SUPPORTED 0")
+
+
+func_begining_of_test_stop
+
+func_reset_start
+func_reset_stop
+
+
+
+tests_start
+
+#### 100MHz PUSCH
+99750_NR5G_PDCP_100MHz_CFtoPAsep_mid_SCoffset_10_39G_SCS120KHz_PUSCH_QPSK_FullAllocation.txt
+
+
+##Full RACH
+## add transaprent mode rach tests when fixed
+
+##Disabling 99844 test case until this is updated for Jun spec changes for PUSCH allocation tables
+#99844_NR_PDCP_100MHz_SCS120KHz_RACH_PrachCfgIndex_75_Pformat_A3_jun18spec.txt 
+
+##PDCCH/PDSCH
+##Disabling 99735 as the test results are not consistent
+#99735_NR5G_PDCP_100Mhz_SCS120KHz_PDSCH_2_Layers_256QAM_RA_0_Config1_62RBs_Len13.txt
+99814_NR5G_PDCP_50MHz_Cid41_AL4_32RBs_Scs120KHz_num3_PDCCH_PDSCH_Qpsk_Td2_SymbolS1L5_RbL2_Mcs9.txt
+
+##PUSCH Mapping Type B
+##Disabled 99686 test because of random UL failures
+## 99686_NR5G_PDCP_100MHz_39G_SCS120KHz_PUSCH_Mapping_TypeA_TypeB_mix.txt
+99702_NR5G_PDCP_100MHz_SCS120KHz_RACH_Msg3_RA_Type1_Mapping_TypeB_Sym_len_8.txt
+
+## UL MIMO test case
+99709_NR5G_PDCP_100MHz_SCS120KHz_PUSCH_2Layer_MappingTypeB_Start3_Len8_AddPos1.txt
+
+####PDCP_NR5G_SCS120KHz_PDSCH_DMRS_Enhancements
+99729_NR5G_PDCP_100Mhz_SCS120KHz_PDSCH_DCI11_2_Layers_DMRS_Type2_MaxLen2.txt
+
+## UL RA Type0 test
+
+##120Khz SIB1 test to add
+
+##Dynamic HARQ k1=5
+99872_NR5G_PDCP_100Mhz_TDD_3_1_1CW_DCI_10_DCI_00_Dynamic_HARQ_PUSCH_K_5_120KHz.txt
+
+##Dynamic HARQ PUCCH
+99877_NR5G_PDCP_100Mhz_TDD_3_1_DCI_1_1_HARQ_PUCCH_frmt_1_Dynamic_2BitHARQ_120Khz.txt
+
+##SSB muting
+99799_NR5G_PDCP_50MHz_SSB_20ms_SCS120KHz_PDSCH_SSB_muting.txt
+
+tests_stop

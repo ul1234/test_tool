@@ -97,6 +97,7 @@ class HookToolPresub(HookTool):
                       [os.path.join(self.teamcity_folder, '.cache', 'presub.pyw'), 'Select files to include in the remote run', 'if dlg.ShowModal() == wx.ID_OK', "if True:"], # skip the select files button
                       [os.path.join(self.teamcity_folder, '.cache', 'presub.pyw'), '', 'Select builds/tests to run', 'title = "Select builds/tests to run..."; from hook_tc import hook; hook.hook_presub_select_builds(items)'],
                       [os.path.join(self.teamcity_folder, '.cache', 'presub.pyw'), 'Select builds/tests to run', 'if dlg.ShowModal() == wx.ID_OK', 'if True:'],  # skip the select builds button
+                      [os.path.join(self.teamcity_folder, '.cache', 'presub.pyw'), '', 'useRecommendedDlg.ShowModal()', 'useRecommended = True'],  # skip the recommended selection button
                       [os.path.join(self.teamcity_folder, '.cache', 'presub.pyw'), '', 'Done scheduling the job on TeamCity', 'self.Destroy()'],  # close window when finish
                      ]
         HookTool.__init__(self, self.rules)

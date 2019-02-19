@@ -31,15 +31,24 @@ class OptParser(OptionParser):
 
     def set_example(self, example = ''):
         if example:
-            first_line_found = False
-            self._example = '\nExamples:\n'
-            for line in example.split('\n'):
-                if not first_line_found:
-                    if not line.strip(): continue
-                    align_leading_spaces = len(line) - len(line.lstrip())
-                    first_line_found = True
-                remain_leading_spaces = max(0, len(line) - len(line.lstrip()) - align_leading_spaces)
-                self._example += ' '*remain_leading_spaces + line.strip() + '\n'
+            example_lines = example.split('\n')
+            while example_lines:  # remove leading empty lines
+                line = example_lines.pop(0)
+                if line.strip():
+                    example_lines.insert(0, line)
+                    break
+            while example_lines:  # remove last empty lines
+                line = example_lines.pop(-1)
+                if line.strip():
+                    example_lines.append(line)
+                    break
+            if example_lines:
+                self._example = '\nExamples:\n'
+                target_leading_spaces = 2
+                align_leading_spaces = len(example_lines[0]) - len(example_lines[0].lstrip()) - target_leading_spaces
+                for line in example_lines:
+                    remain_leading_spaces = max(0, len(line) - len(line.lstrip()) - align_leading_spaces)
+                    self._example += ' '*remain_leading_spaces + line.strip() + '\n'
 
 # decoration function
 def options(option_list, usage = '', example = ''):
@@ -101,7 +110,7 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('copy_result', 'cr'), ('cmp_rslt', 'cmrlt'), ('open_soft', 'soft'), ('msg_identify', 'msg'), ('copy_change_files', 'cchange'),
               ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_logs', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
               ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'urav'), ('build_py', 'bpy'),
-              ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('remote_run_sanity', 'rr'),
+              ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('run_sanity', 'sanity'),
               ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'),
               ('EOF', 'q'), ('EOF', 'quit'), ('EOF', 'exit'), ('help', 'h')]
 
@@ -262,10 +271,11 @@ class CmdLine(CmdLineWithAbbrev):
     @options([make_option("-s", "--test_string", action = "store", type = "string", dest = "test_string", default = "", help = "test string"),
               make_option("-t", "--test_bool", action = "store_true", dest = "test_bool", default = False, help = "test bool"),
              ], "[-s string] [-t bool] args",
-             example = '''
+             example = r'''
                 1) test for example options
                 2) test -s aaa -t
-                    output aaa and True ''')
+                    output aaa and True
+             ''')
     @min_args(1)
     def do_test(self, args, opts = None):
         self.tool.print_('test_string is %s. test_bool is %s. args is %s' % (opts.test_string, opts.test_bool, args[0]))
@@ -664,18 +674,22 @@ class CmdLine(CmdLineWithAbbrev):
 
     @options([make_option("-r", "--regex", action = "store", type = "string", dest = "regex", default = "", help = "regular expression to search"),
               make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
-              make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file"),
-              make_option("-l", "--lines", action = "store", type = "string", dest = "lines", default = "0", help = "lines before and after the filtered line"),
+              make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file, default: filter_result.txt"),
+              make_option("-l", "--lines", action = "store", type = "string", dest = "lines", default = "3", help = "lines before and after the filtered line"),
               make_option("-0", "--no_sort", action = "store_true", dest = "no_sort", default = False, help = "do not sort the output logs"),
-             ], "[-p path] [-r regex] [-l 0] [-o output_file] [-s] {files(regex)}")
+             ], "[-p path] [-r regex] [-l 0] [-o output_file] [-s] {files(regex)}",
+             example = r'''
+                1) filter -p D:\30.Temp\1\190130_151231_Logs\190130_151231_Logs @mux.*txt -r add_cell
+                    -- filter string "add_cell" from all mux*.txt of the folder, output file is "filter_result.txt"
+             ''')
     @min_args(1)
     def do_filter_logs(self, args, opts = None):
         files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args], sort_by_time = True)
         if not files:
             self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
         else:
-            output_file_name, output_file_ext = os.path.splitext(files[0])
-            output_file = opts.output or ('%s_filter%s' % (output_file_name, output_file_ext))
+            output_file = opts.output or 'filter_result.txt'
+            output_file = os.path.join(opts.path, output_file)
             if os.path.isfile(output_file): WinCmd.del_file(output_file)
             filtered_lines = 0
             for f in files:
@@ -1272,21 +1286,23 @@ class CmdLine(CmdLineWithAbbrev):
         self.tc.run_tc()
 
     @options([make_option("-b", "--select_batches_key", action = "store", type = "string", dest = "select_batches_key", default = "", help = "sanity batches: 15k|120k|basic|2cell|3cell"),
-              make_option("-1", "--cell_1_batch_one_run", action = "store_true", dest = "cell_1_batch_one_run", default = False, help = "cell 1 batches, run in one go"),
+              make_option("-1", "--1cell_batch_in_one_go", action = "store_true", dest = "batch_1cell_in_one_go", default = False, help = "run 1cell batches in one go, default: first 15k+120k batch, second basic batch"),
               make_option("-r", "--rav", action = "store", type = "string", dest = "rav", default = "", help = "rav selected, RAV99-2, RAV100-1, etc."),
+              make_option("-p", "--batch_path", action = "store", type = "string", dest = "batch_path", default = "", help = "specific batch path, if not set, use default path c:/temp/sanity_batch"),
               make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
-             ], "[-b batches] [-1] [-d] [-r RAV] project_path  (default: 3 runs (2cell, basic, 15k+120k))",
-             example = '''
-                1) rr D:\Projects\swang2_view_cue_tot_feature_2
-                    submit 3 remote runs, 1--basic 1cell batch, 2--15k+120k 1cell batch, 3--2cell batch
-                2) rr D:\Projects\swang2_view_cue_tot_feature_2 -b 2cell
-                    submit 2cell batch sanity run ''')
+             ], "[-b batches] [-1] [-d] [-p batch_path] [-r RAV] project_path  (default: 3 runs (2cell, basic, 15k+120k))",
+             example = r'''
+                1) sanity D:\Projects\swang2_view_cue_tot_feature_2
+                    -- submit 3 remote runs, 1--basic 1cell batch, 2--15k+120k 1cell batch, 3--2cell batch
+                2) sanity D:\Projects\swang2_view_cue_tot_feature_2 -b 2cell
+                    -- submit 2cell batch sanity run
+             ''')
     @min_args(1)
-    def do_remote_run_sanity(self, args, opts = None):
+    def do_run_sanity(self, args, opts = None):
         project_path = args[0]
         WinCmd.check_folder_exist(project_path)
         self._set_default_project_path(project_path)
-        self.tool.teamcity_remote_run(project_path, self._split_option(opts.select_batches_key), opts.cell_1_batch_one_run, opts.rav, opts.debug)
+        self.tool.teamcity_remote_run(project_path, self._split_option(opts.select_batches_key), opts.batch_1cell_in_one_go, opts.rav, opts.batch_path, opts.debug)
 
     @options([make_option("-c", "--config_pattern", action = "store", type = "string", dest = "config_pattern", default = "", help = "re config pattern to filter config files"),
              ], "[-c pattern]")
@@ -1589,11 +1605,12 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-0", "--manual", action = "store_true", dest = "manual", default = False, help = "do not change, manual select files and builds"),
               make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
              ], "[-0] [-v dynamic_view_path] [-d] project_path",
-             example = '''
+             example = r'''
                 1) presub D:\Projects\swang2_view_cue_tot_feature_2
-                    run presub for the folder, use default Z: as dynamic view path
+                    -- run presub for the folder, use default Z: as dynamic view path
                 2) presub D:\Projects\swang2_view_cue_tot_feature_2 -v X:
-                    run presub for the folder, use X: as dynamic view path ''')
+                    -- run presub for the folder, use X: as dynamic view path
+             ''')
     @min_args(1)
     def do_presub(self, args, opts = None):
         self.tool.presub(args[0], opts.dynamic_view, opts.manual, opts.debug)
@@ -1908,12 +1925,13 @@ class CmdLine(CmdLineWithAbbrev):
         if not opts.only_update: self._runcmd('rename')
 
     @options([make_option("-g", "--git_path", action = "store", type = "string", dest = "git_path", default = r"C:\wang\02.Git\tm_tests\batch", help = "git path"),
-              make_option("-p", "--path", action = "store", type = "string", dest = "batch_path", default = r"C:\wang\03.Batch", help = "batch path"),
+              make_option("-p", "--path", action = "store", type = "string", dest = "sanity_batch_path", default = r"", help = r"batch path, default: C:\wang\03.Batch\sanity"),
               make_option("-b", "--backup", action = "store_true", dest = "backup", default = False, help = "backup the old batch"),
              ], "")
     def do_update_batch(self, args, opts = None):
-        batches = self.tool.update_batch(opts.git_path, opts.batch_path, opts.backup)
-        self.tool.print_('updated %d batches to %s successfully!' % (len(batches), opts.batch_path))
+        batches = self.tool.update_batch(opts.git_path, opts.sanity_batch_path, opts.backup)
+        sanity_batch_path = opts.sanity_batch_path or self.tool.sanity_batch_path
+        self.tool.print_('updated %d batches to %s successfully!' % (len(batches), sanity_batch_path))
 
     @options([], "")
     def do_fix_remote_copy(self, args, opts = None):
@@ -2141,15 +2159,18 @@ class TestTool:
         ## disable the clear signals, the signal monitors cannot be used
         #if clear_signals: self.clear_signals()
         # teamcity
+        self.remote_sanity_batch_path = os.path.join(self.file_path, 'teamcity', 'sanity_batch')
+        self.temp_sanity_batch_path = r'C:\temp\sanity_batch'
         self.sanity_batch_path = r'C:\wang\03.Batch\sanity'
         self.sanity_batches_config = {'2cell': '2CELL4G5G', '3cell': '3CELL4G5G', 'default': ''}
-        self.sanity_batches_dict = {'2cell': [r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
+        self.sanity_batches_dict = {'2cell': [#r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
                                               r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
                                               r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt'],
                                     #'3cell': [r'batch_CUE_NAS_NR5G_ENDC_3CELL_June18_120KHz_Basic.txt'],
                                     '15k': [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt'],
                                     '120k': [r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt'],
-                                    'basic': [r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt']}
+                                    'basic': [r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt',
+                                              r'batch_CUE_NAS_NR5G_SA_1CELL_Sept18_Basic.txt']}
         self.sanity_batches = reduce(list.__add__, self.sanity_batches_dict.values(), [])
         self.other_batches = [r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
                               r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
@@ -4559,7 +4580,14 @@ class TestTool:
         WinCmd.copy_dir(teamcity_path, teamcity_copy_path, empty_dest_first = True)
         return teamcity_copy_path
 
-    def teamcity_remote_run(self, project_path, select_batches_key = '', cell_1_batch_one_run = False, rav = '', debug_output = False):
+    def teamcity_remote_run(self, project_path, select_batches_key = '', batch_1cell_in_one_go = False, rav = '', batch_path = '', debug_output = False):
+        if not batch_path:
+            batch_path = self.temp_sanity_batch_path
+            if not os.path.isdir(batch_path): WinCmd.make_dir(batch_path)
+            WinCmd.copy_dir(self.remote_sanity_batch_path, batch_path, empty_dest_first = True)
+            self.print_('copy batches from %s to %s' % (self.remote_sanity_batch_path, batch_path))
+        WinCmd.check_folder_exist(batch_path)
+        self.print_('batch path: %s' % batch_path)
         teamcity_copy_path = self._copy_teamcity_folder(project_path)
         remote_run_tool = os.path.join(teamcity_copy_path, 'remote_run.pyw')
         teamcity_ini_file = os.path.join(os.path.dirname(remote_run_tool), 'settings.ini')
@@ -4578,19 +4606,21 @@ class TestTool:
             if key in select_keys:
                 runs.append((self.sanity_batches_dict[key], self.sanity_batches_config[key]))
                 select_keys.remove(key)
-        if not cell_1_batch_one_run and 'basic' in select_keys:
+        if not batch_1cell_in_one_go and 'basic' in select_keys:
             runs.append((self.sanity_batches_dict['basic'], self.sanity_batches_config['default']))
             select_keys.remove('basic')
         if select_keys: runs.append((reduce(list.__add__, [self.sanity_batches_dict[k] for k in select_keys], []), self.sanity_batches_config['default']))
         self.print_('Total %d runs.' % len(runs))
         for i, (run, config) in enumerate(runs):
             self.print_('Start to run %d: (%s) %s ...' % (i+1, config, run))
-            batches = [os.path.join(self.sanity_batch_path, r) for r in run]
+            batches = [os.path.join(batch_path, r) for r in run]
             teamcity_ini.set_batches(batches, config, rav)
             hook_tool = HookToolCacheManager(remote_run_tool, debug_output = debug_output)
             hook_tool.run()
             #raw_input(r'press any key to continue...')
             self.print_('End submit running %d.' % (i+1))
+        if not debug_output:  # remove the copied folder if not debug
+            if os.path.isdir(teamcity_copy_path): WinCmd.del_dir(teamcity_copy_path, include_dir = True)
 
     def presub(self, project_path, dynamic_view_path, manual = False, debug_output = False):
         temp_file = self.get_temp_filename()
@@ -4913,17 +4943,20 @@ class TestTool:
         else:
             self.print_('[Error] cannot decode the string. Please check.')
 
-    def update_batch(self, git_path, batch_path, backup = False):
+    def update_batch(self, git_path, sanity_batch_path = '', backup = False):
         WinCmd.cmd('git pull', git_path, showcmdwin = True, wait = True, retaincmdwin = False)
+        sanity_batch_path = sanity_batch_path or self.sanity_batch_path
+        batch_path = os.path.dirname(sanity_batch_path)
         if backup:
             bak_dir = os.path.join(os.path.dirname(batch_path), 'batch_bak')
             WinCmd.copy_dir(batch_path, bak_dir, empty_dest_first = True, include_src_dir = False)
             self.print_('backup batches to folder: %s' % bak_dir)
-        sanity_dir = os.path.join(batch_path, 'sanity')
         source_batches = [os.path.join(git_path, b) for b in self.all_batches]
         WinCmd.copy_files(source_batches, batch_path, empty_dir_first = False)
         sanity_source_batches = [os.path.join(batch_path, b) for b in self.sanity_batches]
-        WinCmd.copy_files(sanity_source_batches, sanity_dir, empty_dir_first = False)
+        WinCmd.copy_files(sanity_source_batches, sanity_batch_path, empty_dir_first = False)
+        if not os.path.isdir(self.remote_sanity_batch_path): WinCmd.make_dir(self.remote_sanity_batch_path)
+        WinCmd.copy_files(sanity_source_batches, self.remote_sanity_batch_path, empty_dir_first = False)
         return self.all_batches
 
     @use_system32_on_64bit_system

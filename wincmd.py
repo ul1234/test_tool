@@ -57,7 +57,7 @@ class WinCmd:
             raise Exception('no such directory: %s' % dest)
         WinCmd.cmd(r'copy /y "%s" "%s" > nul' % (src_file, dest))  # no output info
         dest_file = dest if not dest_is_dir else os.path.join(dest, os.path.basename(src_file))
-        if not os.path.isfile(dest_file) or os.path.getmtime(src_file) != os.path.getmtime(dest_file):
+        if not os.path.isfile(dest_file) or int(os.path.getmtime(src_file)) != int(os.path.getmtime(dest_file)):
             raise Exception('cannot copy file to %s' % dest_file)
 
     @staticmethod
