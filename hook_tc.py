@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import wx
+#import wx
 import os, sys, traceback, ConfigParser
 from decorator import thread_func, hook_func
 from hook_tool import HookTool
