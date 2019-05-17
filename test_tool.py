@@ -110,7 +110,7 @@ class CmdLineWithAbbrev(cmd.Cmd):
               ('copy_result', 'cr'), ('cmp_rslt', 'cmrlt'), ('open_soft', 'soft'), ('msg_identify', 'msg'), ('copy_change_files', 'cchange'),
               ('gen_log', 'glog'), ('change_ulan', 'ulan'), ('test_re', 're'), ('filter_logs', 'filter'), ('set_run1', 'r1'), ('ubi_file', 'ubi'),
               ('fix_remote_copy', 'fix'), ('extract_log', 'extract'), ('trc_file', 'trc'), ('update_rav', 'urav'), ('build_py', 'bpy'),
-              ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('run_sanity', 'sanity'),
+              ('update_batch', 'ubatch'), ('build_lte', 'blte'), ('run_sanity', 'sanity'), ('process_pdsch_logs', 'pdsch_logs'),
               ('run_teamcity', 'rtc'), ('get_usf_and_script', 'script'), ('list_files', 'ls'), ('copy', 'cp'),
               ('EOF', 'q'), ('EOF', 'quit'), ('EOF', 'exit'), ('help', 'h')]
 
@@ -677,7 +677,7 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file, default: filter_result.txt"),
               make_option("-l", "--lines", action = "store", type = "string", dest = "lines", default = "3", help = "lines before and after the filtered line"),
               make_option("-0", "--no_sort", action = "store_true", dest = "no_sort", default = False, help = "do not sort the output logs"),
-             ], "[-p path] [-r regex] [-l 0] [-o output_file] [-s] {files(regex)}",
+             ], "[-p path] [-r regex] [-l 0] [-o output_file] {files(regex)}",
              example = r'''
                 1) filter -p D:\30.Temp\1\190130_151231_Logs\190130_151231_Logs @mux.*txt -r add_cell
                     -- filter string "add_cell" from all mux*.txt of the folder, output file is "filter_result.txt"
@@ -700,6 +700,43 @@ class CmdLine(CmdLineWithAbbrev):
                 self.tool.print_('Filtered %d lines among %d files to %s successfully!' % (filtered_lines, len(files), output_file))
             else:
                 self.tool.print_('cannot find "%s" among %d files.' % (opts.regex, len(files)))
+
+    @options([make_option("-c", "--crc_fail", action = "store", type = "string", dest = "crc_fail", default = "", help = "only get logs for crc fail 1 or success 0"),
+              make_option("-r", "--regex", action = "store", type = "string", dest = "regex", default = "", help = "regular expression to search"),
+              make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
+              make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file, default: filter_result.txt"),
+             ], "[-p path] [-c crc_fail] [-r regex] [-o output_file] {files(regex)}",
+             example = r'''
+                1) process_pdsch_logs -p D:\30.Temp\1\190130_151231_Logs\190130_151231_Logs @mux.*txt
+                    -- process pdsch logs from all mux*.txt of the folder, output file is "pdsch_logs.txt"
+             ''')
+    @min_args(1)
+    def do_process_pdsch_logs(self, args, opts = None):
+        files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args], sort_by_time = True)
+        if not files:
+            self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
+        else:
+            output_file = opts.output or 'pdsch_logs.txt'
+            output_file = os.path.join(opts.path, output_file)
+            if os.path.isfile(output_file): WinCmd.del_file(output_file)
+            regex_list = []
+            if opts.regex: regex_list.append(opts.regex)
+            if opts.crc_fail:
+                if int(opts.crc_fail) == 1:
+                    crc_regex = 'CrcRsltCw0: Fail'
+                else:
+                    crc_regex = 'CrcRsltCw0: Pass'
+                regex_list.append(crc_regex)
+            for f in files:
+                lines = self.tool.process_pdsch_logs(f, output_file, regex_list)
+                if len(lines):
+                    WinCmd.check_file_exist(output_file)
+                    self.tool.print_('get pdsch logs (lines %d - %d ) from file %s to %s successfully!' % (lines[0], lines[-1], os.path.basename(f), output_file))
+                    break
+                else:
+                    self.tool.print_('cannot get pdsch logs in file %s.' % os.path.basename(f))
+            if not len(lines):
+                self.tool.print_('cannot get pdsch logs among %d files.' % (len(files)))
 
     @options([make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
              ], "[-p path] {files(regex)}")
@@ -2878,6 +2915,44 @@ class TestTool:
             else: WinCmd.copy_dir(f, target_bin_folder, empty_dest_first = False, include_src_dir = True)
         return product
 
+    def process_pdsch_logs(self, filename, output_file, regex_list = []):
+        state = 'start'
+        dl_srp_start = 'LOG_NR_L0_DLC_PDCCH_BRP_MSG_TO_DLSRP_START'
+        flow_control = 'FLOW_CTRL'
+        remain_regex_list = regex_list[:]
+
+        with open(filename, 'r') as f:
+            for line_num, line in enumerate(f):
+                is_dl_srp_start = re.search(dl_srp_start, line, flags = re.IGNORECASE)
+                is_flow_control = re.search(flow_control, line, flags = re.IGNORECASE)
+                if state == 'start':
+                    if is_dl_srp_start:
+                        state = 'dl_srp_start_1'
+                        start_line = line_num
+                elif state == 'dl_srp_start_1':
+                    if is_flow_control:
+                        state = 'start'
+                        remain_regex_list = regex_list[:]
+                    elif is_dl_srp_start:
+                        if len(remain_regex_list) == 0:
+                            state = 'found'
+                            end_line = line_num
+                            break
+                        else:
+                            state = 'dl_srp_start_1'
+                            start_line = line_num
+                            remain_regex_list = regex_list[:]
+                    else:
+                        for r in remain_regex_list:
+                            if re.search(r, line, flags = re.IGNORECASE):
+                                remain_regex_list.remove(r)
+        if state == 'found':
+            target_lines = list(range(start_line, end_line))
+            self.filter_file_with_lines(filename, target_lines[:], output_file)
+        else:
+            target_lines = []
+        return target_lines
+
     def filter_in_file(self, filename, regex, lines_around, output_file, file_flag = True):
         filtered_line_num = []
         with open(filename, 'r') as f:
@@ -2888,16 +2963,19 @@ class TestTool:
             target_line_num = reduce(lambda x,y: x+range(y-lines_around, y+lines_around+1), filtered_line_num, [])
             target_line_num = filter(lambda x: x >= 0, list(set(target_line_num)))
             target_line_num.sort()
-            with open(output_file, 'a') as f_write:
-                if file_flag: f_write.write('\n%s %s %s\n\n' % ('#'*20, filename, '#'*20))
-                with open(filename, 'r') as f:
-                    target_line = target_line_num.pop(0)
-                    for line_num, line in enumerate(f):
-                        if line_num == target_line:
-                            if len(target_line_num) == 0: break
-                            target_line = target_line_num.pop(0)
-                            f_write.write(line)
+            self.filter_file_with_lines(filename, target_line_num, output_file, file_flag)
         return len(filtered_line_num)
+
+    def filter_file_with_lines(self, filename, target_lines, output_file, file_flag = True):
+        with open(output_file, 'a') as f_write:
+            if file_flag: f_write.write('\n%s %s %s\n\n' % ('#'*20, filename, '#'*20))
+            with open(filename, 'r') as f:
+                target_line = target_lines.pop(0)
+                for line_num, line in enumerate(f):
+                    if line_num == target_line:
+                        f_write.write(line)
+                        if len(target_lines) == 0: break
+                        target_line = target_lines.pop(0)
 
     def search_in_file(self, filename, regex, piece_size = 30, bytes_align = False, excel_file = False):
         filesize = os.path.getsize(filename)
