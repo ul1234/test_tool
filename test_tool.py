@@ -1322,17 +1322,17 @@ class CmdLine(CmdLineWithAbbrev):
         self.tc.gen_all_upload_files(mk)
         self.tc.run_tc()
 
-    @options([make_option("-b", "--select_batches_key", action = "store", type = "string", dest = "select_batches_key", default = "", help = "sanity batches: 15k|120k|basic|2cell|3cell"),
-              make_option("-1", "--1cell_batch_in_one_go", action = "store_true", dest = "batch_1cell_in_one_go", default = False, help = "run 1cell batches in one go, default: first 15k+120k batch, second basic batch"),
+    @options([make_option("-b", "--select_batches_key", action = "store", type = "string", dest = "select_batches_key", default = "", help = "sanity batches: 1cell|2cell"),
+              make_option("-1", "--1cell_batch_in_one_go", action = "store_true", dest = "batch_1cell_in_one_go", default = False, help = "run 1cell batches in one go"),
               make_option("-r", "--rav", action = "store", type = "string", dest = "rav", default = "", help = "rav selected, RAV99-2, RAV100-1, etc."),
               make_option("-p", "--batch_path", action = "store", type = "string", dest = "batch_path", default = "", help = "specific batch path, if not set, use default path c:/temp/sanity_batch"),
               make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
-             ], "[-b batches] [-1] [-d] [-p batch_path] [-r RAV] project_path  (default: 3 runs (2cell, basic, 15k+120k))",
+             ], "[-b batches] [-1] [-d] [-p batch_path] [-r RAV] project_path  (default: 2 runs (1cell, 2cell))",
              example = r'''
                 1) sanity D:\Projects\swang2_view_cue_tot_feature_2
-                    -- submit 3 remote runs, 1--basic 1cell batch, 2--15k+120k 1cell batch, 3--2cell batch
+                    -- submit 2 remote runs, 1--1cell smoke test, 2--2cell smoke test
                 2) sanity D:\Projects\swang2_view_cue_tot_feature_2 -b 2cell
-                    -- submit 2cell batch sanity run
+                    -- submit 2cell smoke test
              ''')
     @min_args(1)
     def do_run_sanity(self, args, opts = None):
@@ -2200,16 +2200,19 @@ class TestTool:
         self.temp_sanity_batch_path = r'C:\temp\sanity_batch'
         self.sanity_batch_path = r'C:\wang\03.Batch\sanity'
         self.sanity_batches_config = {'2cell': '2CELL4G5G', '3cell': '3CELL4G5G', 'default': ''}
-        self.sanity_batches_dict = {'2cell': [#r'batch_CUE_NAS_NR5G_ENDC_2CELL_Basic.txt',
-                                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
-                                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt'],
-                                    #'3cell': [r'batch_CUE_NAS_NR5G_ENDC_3CELL_June18_120KHz_Basic.txt'],
-                                    '15k': [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt'],
-                                    '120k': [r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt'],
-                                    'basic': [r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt',
-                                              r'batch_CUE_NAS_NR5G_SA_1CELL_Sept18_Basic.txt']}
+        self.sanity_batches_dict = {'2cell': [r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18__Smoke_Tests.txt',
+                                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Smoke_Tests.txt'],
+                                    '1cell': [r'batch_CUE_PDCP_NR5G_1CELL_Smoke_Tests.txt',
+                                              r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Smoke_Tests.txt']}
         self.sanity_batches = reduce(list.__add__, self.sanity_batches_dict.values(), [])
-        self.other_batches = [r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
+        self.other_batches = [r'batch_CUE_PDCP_NR5G_1CELL_15kHz_Basic.txt',
+                              r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Basic.txt',
+                              r'batch_CUE_PDCP_NR5G_1CELL_Basic.txt',
+                              r'batch_CUE_NAS_NR5G_SA_1CELL_Sept18_Basic.txt',
+                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
+                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt',
+                              r'batch_CUE_NAS_NR5G_ENDC_3CELL_June18_120KHz_Basic.txt',
+                              r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
                               r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
                               r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL_120Khz.txt',
                               r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL.txt']
