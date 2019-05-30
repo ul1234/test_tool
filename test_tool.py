@@ -71,7 +71,13 @@ def options(option_list, usage = '', example = ''):
             optParser.set_usage("%s %s" % (func_name, usage))
         def new_func(instance, arg):
             try:
-                opts, new_args = optParser.parse_args(arg.split())
+                # deal with "... ..." args, spaces in ""
+                args_in_quotes = re.findall(r'(?<=\s)"[^-"]+"(?=\s)', arg.strip())
+                for s in args_in_quotes:
+                    subs = s[1:-1].replace(' ', '$')
+                    arg = arg.replace(s, subs)
+                args_to_parser = [s.replace('$', ' ') for s in arg.split()]
+                opts, new_args = optParser.parse_args(args_to_parser)
             except OptParseError as e:
                 print (e)
                 optParser.print_help()
@@ -172,7 +178,7 @@ class CmdLine(CmdLineWithAbbrev):
         def _deal_with_help(line_cmd):
             return [line_cmd[0]] + _deal_with_abbrev(line_cmd[1:])
         # deal with abbreviation
-        line_cmd = line.strip().split()
+        line_cmd = line.strip().split(' ', 1)
         if len(line_cmd):
             if line_cmd[0] == 'help':
                 line_cmd = _deal_with_help(line_cmd)
