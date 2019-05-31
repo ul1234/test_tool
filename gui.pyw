@@ -2,14 +2,52 @@
 # -*- coding: utf-8 -*-
 
 import wx
-import win32api, sys, os
+import win32api, sys, os, ConfigParser
 from run_cmd import RunCmd
 
 CMD = RunCmd()
 
+class IniConfig(object):
+    def __init__(self, ini_file):
+        self.ini = ConfigParser.RawConfigParser()
+        self.ini_file = ini_file
+        if not os.path.isfile(ini_file): open(ini_file, 'w').close()
+        self.ini.read(ini_file)
+        
+    def write_back(self):
+        with open(self.ini_file, 'w+') as f_write:
+            self.ini.write(f_write)
+            
+    def option_name(self, option):
+        return option.replace(' ', '_').replace(':', '')
+        
+    def write(self, box_name, option, value):
+        option = self.option_name(option)
+        try:
+            self.ini.set(box_name, option, value)
+        except ConfigParser.NoSectionError:
+            self.ini.add_section(box_name)
+            self.ini.set(box_name, option, value)
+        self.write_back()
+        
+    def read(self, box_name, option):
+        option = self.option_name(option)
+        value = ''
+        try:
+            value = self.ini.get(box_name, option)
+        except ConfigParser.NoSectionError:
+            self.ini.add_section(box_name)
+        except ConfigParser.NoOptionError:
+            pass
+        return value
+        
+INI = IniConfig('config.ini')
+
+
 class Box(wx.StaticBox):
     def __init__(self, parent):
-        super(Box, self).__init__(parent, wx.ID_ANY, self.__class__.__name__[3:])
+        self.name = self.__class__.__name__[3:]
+        super(Box, self).__init__(parent, wx.ID_ANY, self.name)
         self.box_sizer = wx.StaticBoxSizer(self, wx.VERTICAL)
 
     def add_line(self, controls):
@@ -19,12 +57,13 @@ class Box(wx.StaticBox):
             h_sizer.Add(c, 0, wx.ALL, 5)
         self.box_sizer.Add(h_sizer)
 
-    def add_select_folder_line(self, folder_text, default_folder = ''):
+    def add_select_folder_line(self, folder_text):
         self.text_select_folder = wx.TextCtrl(self, -1, size = (300, -1), style = wx.ALIGN_LEFT)
+        default_folder = INI.read(self.name, folder_text)
         self.text_select_folder.SetValue(default_folder)
 
         button_select = wx.Button(self, -1, "Select ...")
-        button_select.Bind(wx.EVT_BUTTON, self.select_folder(self.text_select_folder))
+        button_select.Bind(wx.EVT_BUTTON, self.select_folder(folder_text, self.text_select_folder))
 
         self.add_line([folder_text, self.text_select_folder, button_select])
 
@@ -40,12 +79,13 @@ class Box(wx.StaticBox):
 
         self.add_line([button])
 
-    def select_folder(self, edit_project_path):
+    def select_folder(self, folder_text, edit_project_path):
         def on_select_folder(event):
             dlg = wx.DirDialog(self, "Choose Folder:", defaultPath = edit_project_path.GetValue(), style = wx.DD_DEFAULT_STYLE|wx.DD_DIR_MUST_EXIST)
             if dlg.ShowModal() == wx.ID_OK:
                 edit_project_path.Clear()
                 edit_project_path.SetValue(dlg.GetPath())
+                INI.write(self.name, folder_text, dlg.GetPath())
             dlg.Destroy()
         return on_select_folder
 
@@ -82,7 +122,7 @@ class BoxPresub(Box):
 
         self.add_line(["Dynamic View:", self.choice_letters])
 
-        self.get_project_path = self.add_select_folder_line("Project Path:", default_folder = r'D:\Projects\swang2_view_cue_tot_feature_5')
+        self.get_project_path = self.add_select_folder_line("Project Path:")
 
         button = wx.Button(self, -1, "Run Presub")
         button.Bind(wx.EVT_BUTTON, self.run)
