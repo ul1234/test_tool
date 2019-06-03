@@ -6,6 +6,7 @@ import win32api, sys, os, ConfigParser
 from run_cmd import RunCmd
 
 CMD = RunCmd()
+#CMD.DEBUG = True
 
 class IniConfig(object):
     def __init__(self, ini_file):
@@ -175,8 +176,8 @@ class BoxSplitLog(Box):
         pieces_str_list = ['-i {}'.format(pieces_value), '', '-a', '-l 1']
         pieces_str = pieces_str_list[pieces_option + 1]
         
-        #CMD.run('spl -p {} -s {} {}'.format(folder, piece_size, files))
-        print('spl -p {} -s {} {} {}'.format(folder, piece_size, pieces_str, files))
+        CMD.run('spl -p {} -s {} {} {}'.format(folder, piece_size, pieces_str, files))
+        #print('spl -p {} -s {} {} {}'.format(folder, piece_size, pieces_str, files))
 
 
 class TabTeamcity(Tab):
@@ -225,7 +226,7 @@ class MainFrame(wx.Frame):
         sys.stdout = RedirectPrint(self.text_log)       # redirect stdout
 
         h_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        h_sizer.Add(notebook, 1, wx.EXPAND|wx.ALL, 10)
+        h_sizer.Add(notebook, 0, wx.EXPAND|wx.ALL, 10)
         h_sizer.Add(self.text_log, 1, wx.EXPAND|wx.ALL, 10)
         panel.SetSizer(h_sizer)
 

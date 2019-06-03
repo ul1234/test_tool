@@ -72,7 +72,7 @@ def options(option_list, usage = '', example = ''):
         def new_func(instance, arg):
             try:
                 # deal with "... ..." args, spaces in ""
-                args_in_quotes = re.findall(r'(?<=\s)"[^-"]+"(?=\s)', arg.strip())
+                args_in_quotes = re.findall(r'"[^"]+?"', arg.strip())
                 for s in args_in_quotes:
                     subs = s[1:-1].replace(' ', '$')
                     arg = arg.replace(s, subs)
@@ -3337,7 +3337,7 @@ class TestTool:
         folder = os.path.dirname(timestamp_file)
         if not os.path.isdir(folder): WinCmd.make_dir(folder)
         if not os.path.isfile(timestamp_file):
-            self.print_('try to mark timestamp: %s, case stop: %s' % (timestamp_file, case_stop))  # test, wangsl???
+            self.print_('try to mark timestamp: %s, case stop: %s' % (timestamp_file, case_stop))
         with open(timestamp_file, 'a') as f_write:
             timestamp = datetime.now().strftime('%Y%m%d_%H_%M_%S')
             f_write.write(timestamp if case_stop else '\n%s--' % timestamp)
@@ -4163,17 +4163,6 @@ class TestTool:
             except Exception as e:
                 self.print_('Error modify file %s: %s' % (batch, e))
         return changed_batches
-
-    def _check_product(self, product):
-        # product: [ue]_[pro]_[rat], example: sue_4x2_fdd, mue_5c_tdd, cue_ls2_fdd, etc.
-        ues = ['sue', 'mue', 'cue']
-        rats = ['fdd', 'tdd']
-        products = {'sue': ['4x2', '4x4', '4x2_ulmimo', 'sue2'],
-                    'mue': ['2x2', '2x2_split_dl', 'mue2'],
-                    'cue': ['extmue', 'loadsys_split_dl', 'ls2_dl', 'ls2']
-                    }
-        # wangsl???
-        pass
 
     # version: K4.6.4REV50 or K_04_06_04_REV50 or LTE-CUE-LS2_L1L2_LME_3_3_2_REV50 or LTE-SUE-2X2-LSA_L1_01_00_00_REV01
     #          or LTE-MUE-C0309_TDD_5C_L1_14_10_09_17_05_04 ( temporary binary)
