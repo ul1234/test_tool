@@ -79,6 +79,8 @@ class HookToolRemoteRun(HookTool):
         self.teamcity_folder = teamcity_folder
         self.rules = [[os.path.join(self.teamcity_folder, '.cache', 'remote_run.pyw'), '', 'frame.Show(True)', 'frame.Show(True); from hook_tc import hook; import os; hook.hook_frame(frame)'],
                       [os.path.join(self.teamcity_folder, '.cache', 'remote_run_internals', 'main_frame.py'), 'Build has been scheduled', 'msgDlg.ShowModal()', 'from hook_tc import hook; hook.hook_schedule_end()'],
+                      [os.path.join(self.teamcity_folder, '.cache', 'remote_run_internals', 'add_batch_dialog', 'input_panel.py'), '', 'wx.CallAfter(self._start_update)', 'wx.CallAfter(self._populate_batch_file_list, False)'],
+                      [os.path.join(self.teamcity_folder, '.cache', 'remote_run_internals', 'path_select_panel.py'), '', 'self._runReasonCombo.SetSelection(0)', 'self._runReasonCombo.SetSelection(4)'],
                      ]
         HookTool.__init__(self, self.rules)
 

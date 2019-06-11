@@ -41,8 +41,8 @@ class RunCmd(object):
             self.print_('(Cmd) %s\n' % cmd, output_time = False)
             result = self._run(cmd)
             result = result.replace('(Cmd) ', '')
-            self.print_(result, output_time = False)
-            self.print_('{} Finish {}'.format('#'*30, '#'*30), output_time = False)
+            self.print_(result.strip(), output_time = False)
+            self.print_('\n{} Finish {}\n'.format('#'*30, '#'*30), output_time = False)
 
             
 if __name__ == '__main__':

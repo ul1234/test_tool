@@ -14,14 +14,14 @@ class IniConfig(object):
         self.ini_file = ini_file
         if not os.path.isfile(ini_file): open(ini_file, 'w').close()
         self.ini.read(ini_file)
-        
+
     def write_back(self):
         with open(self.ini_file, 'w+') as f_write:
             self.ini.write(f_write)
-            
+
     def option_name(self, option):
         return option.replace(' ', '_').replace(':', '')
-        
+
     def write(self, box_name, option, value):
         option = self.option_name(option)
         try:
@@ -30,7 +30,7 @@ class IniConfig(object):
             self.ini.add_section(box_name)
             self.ini.set(box_name, option, value)
         self.write_back()
-        
+
     def read(self, box_name, option):
         option = self.option_name(option)
         value = ''
@@ -41,7 +41,7 @@ class IniConfig(object):
         except ConfigParser.NoOptionError:
             pass
         return value
-        
+
 INI = IniConfig('config.ini')
 
 
@@ -50,6 +50,21 @@ class Box(wx.StaticBox):
         self.name = self.__class__.__name__[3:]
         super(Box, self).__init__(parent, wx.ID_ANY, self.name)
         self.box_sizer = wx.StaticBoxSizer(self, wx.VERTICAL)
+        self.ini_sync = []
+        self.init()
+        self.ini_sync_update_read()
+
+    def ini_sync_update_read(self):
+        for name, option, control in self.ini_sync:
+            value = INI.read(name, option)
+            if not value and isinstance(control, wx.ComboBox):
+                control.SetSelection(0)
+            else:
+                control.SetValue(value)
+
+    def ini_sync_update_write(self):
+        for name, option, control in self.ini_sync:
+            INI.write(name, option, control.GetValue())
 
     def add_line(self, controls):
         h_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -60,8 +75,7 @@ class Box(wx.StaticBox):
 
     def add_select_folder_line(self, folder_text):
         self.text_select_folder = wx.TextCtrl(self, -1, size = (300, -1), style = wx.ALIGN_LEFT)
-        default_folder = INI.read(self.name, folder_text)
-        self.text_select_folder.SetValue(default_folder)
+        self.ini_sync.append((self.name, folder_text, self.text_select_folder))
 
         button_select = wx.Button(self, -1, "Select ...")
         button_select.Bind(wx.EVT_BUTTON, self.select_folder(folder_text, self.text_select_folder))
@@ -86,12 +100,12 @@ class Box(wx.StaticBox):
             if dlg.ShowModal() == wx.ID_OK:
                 edit_project_path.Clear()
                 edit_project_path.SetValue(dlg.GetPath())
-                INI.write(self.name, folder_text, dlg.GetPath())
             dlg.Destroy()
         return on_select_folder
 
     def select_files(self, get_folder, files_callback = None):
         def on_select_files(event):
+            self.ini_sync_update_write()
             dlg = wx.FileDialog(self, "Choose Files:", defaultDir = get_folder(), style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
             files = []
             if (dlg.ShowModal() == wx.ID_OK):
@@ -115,11 +129,9 @@ class Tab(wx.Panel):
 
 
 class BoxPresub(Box):
-    def __init__(self, parent):
-        super(BoxPresub, self).__init__(parent)
-
+    def init(self):
         self.choice_letters = wx.ComboBox(self, choices = self.driver_letters(), style = wx.CB_READONLY)
-        self.choice_letters.SetSelection(0)
+        self.ini_sync.append((self.name, "Driver Letter", self.choice_letters))
 
         self.add_line(["Dynamic View:", self.choice_letters])
 
@@ -135,28 +147,40 @@ class BoxPresub(Box):
         return [s[:2] for s in drives.split('\000')[-2::-1]]
 
     def run(self, event):
+        self.ini_sync_update_write()
         dynamic_view = self.choice_letters.GetValue()
         CMD.run('presub {} -v {}'.format(self.get_project_path(), dynamic_view))
 
-class BoxRemoteRun(Box):
-    pass
+class BoxSmokeTest(Box):
+    def init(self):
+        self.choice_batch = wx.ComboBox(self, choices = ['All', '1Cell', '2Cell'], style = wx.CB_READONLY)
+        self.choice_batch.SetSelection(0)
+
+        self.add_line(["Smoke Test Batch:", self.choice_batch])
+
+        self.get_project_path = self.add_select_folder_line("Project Path:")
+
+        button = wx.Button(self, -1, "Run Smoke Test")
+        button.Bind(wx.EVT_BUTTON, self.run)
+
+        self.add_line([button])
+
+    def run(self, event):
+        batch = self.choice_batch.GetValue()
+        batch_str = '' if batch == 'All' else '-b {}'.format(batch)
+        CMD.run('sanity {} {} '.format(batch_str, self.get_project_path()))
 
 class BoxGenerateLog(Box):
-    def __init__(self, parent):
-        super(BoxGenerateLog, self).__init__(parent)
-
+    def init(self):
         self.get_log_folder = self.add_select_folder_line("Log Folder:")
 
-        self.add_select_files_line("Generate Log ...", self.get_log_folder, self.generate_log)
+        self.add_select_files_line("Generate Logs ...", self.get_log_folder, self.generate_log)
 
     def generate_log(self, folder, files):
-        #CMD.run('glog -p {} {}'.format(folder, files))
-        print('glog -p {} {}'.format(folder, files))
+        CMD.run('glog -0 -p {} {}'.format(folder, files))
 
 class BoxSplitLog(Box):
-    def __init__(self, parent):
-        super(BoxSplitLog, self).__init__(parent)
-
+    def init(self):
         self.get_log_folder = self.add_select_folder_line("Log Folder:")
 
         self.choice_size = wx.ComboBox(self, choices = ['30', '80', '150'])
@@ -167,7 +191,7 @@ class BoxSplitLog(Box):
 
         self.add_line(["Each Piece Size (MBytes)", self.choice_size, "Split Pieces", self.choice_pieces])
 
-        self.add_select_files_line("Split Log ...", self.get_log_folder, self.split_files)
+        self.add_select_files_line("Split Logs ...", self.get_log_folder, self.split_files)
 
     def split_files(self, folder, files):
         piece_size = self.choice_size.GetValue()
@@ -175,18 +199,58 @@ class BoxSplitLog(Box):
         pieces_value = self.choice_pieces.GetValue()  # -1 means self-defined
         pieces_str_list = ['-i {}'.format(pieces_value), '', '-a', '-l 1']
         pieces_str = pieces_str_list[pieces_option + 1]
-        
-        CMD.run('spl -p {} -s {} {} {}'.format(folder, piece_size, pieces_str, files))
-        #print('spl -p {} -s {} {} {}'.format(folder, piece_size, pieces_str, files))
 
+        CMD.run('spl -p {} -s {} {} {}'.format(folder, piece_size, pieces_str, files))
+
+class BoxSearchLog(Box):
+    def init(self):
+        self.get_log_folder = self.add_select_folder_line("Log Folder:")
+
+        self.choice_size = wx.ComboBox(self, choices = ['30', '80', '150'])
+        self.choice_size.SetSelection(0)
+
+        self.add_line(["Each Piece Size (MBytes)", self.choice_size])
+
+        self.text_search_pattern = wx.ComboBox(self, choices = ['DLC_PDCCH_CTRL_CNFG', 'DLC_PDCCH_BRP_MSG_TO'])
+        self.ini_sync.append((self.name, "Search Pattern", self.text_search_pattern))
+
+        self.add_line(["Search Pattern (Regular EXP)", self.text_search_pattern])
+
+        self.add_select_files_line("Search Logs ...", self.get_log_folder, self.search_logs)
+
+    def search_logs(self, folder, files):
+        piece_size = self.choice_size.GetValue()
+        search_pattern = self.text_search_pattern.GetValue()
+        if search_pattern.strip():
+            CMD.run('search -p {} -s {} -r {} {}'.format(folder, piece_size, search_pattern, files))
+        else:
+            print('Error: Search Pattern is empty!')
+
+class BoxFilterLog(Box):
+    def init(self):
+        self.get_log_folder = self.add_select_folder_line("Log Folder:")
+
+        self.text_search_pattern = wx.ComboBox(self, choices = ['DLC_PDCCH_CTRL_CNFG', 'DLC_PDCCH_BRP_MSG_TO'])
+        self.ini_sync.append((self.name, "Search Pattern", self.text_search_pattern))
+
+        self.add_line(["Search Pattern (Regular EXP)", self.text_search_pattern])
+
+        self.add_select_files_line("Filter Logs ...", self.get_log_folder, self.filter_logs)
+
+    def filter_logs(self, folder, files):
+        search_pattern = self.text_search_pattern.GetValue()
+        if search_pattern.strip():
+            CMD.run('filter -p {} -r {} {}'.format(folder, search_pattern, files))
+        else:
+            print('Error: Search Pattern is empty!')
 
 class TabTeamcity(Tab):
     def boxes(self):
-        return [BoxPresub, BoxRemoteRun]
+        return [BoxPresub, BoxSmokeTest]
 
 class TabLog(Tab):
     def boxes(self):
-        return [BoxGenerateLog, BoxSplitLog]
+        return [BoxGenerateLog, BoxSplitLog, BoxSearchLog, BoxFilterLog]
 
 class TabAnalyse(Tab):
     def boxes(self):
@@ -211,7 +275,7 @@ class RedirectPrint(object):
 
 class MainFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, title = "Test tool", size = (1200,600))
+        wx.Frame.__init__(self, None, title = "Test tool", size = (1200,700))
 
         panel = wx.Panel(self, style = wx.RAISED_BORDER)
 
@@ -222,7 +286,7 @@ class MainFrame(wx.Frame):
             notebook.AddPage(tab, tab.name)
 
         self.text_log = wx.TextCtrl(panel, wx.ID_ANY, style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL|wx.TE_DONTWRAP)
-        #self.text_log.ShowPosition(self.text_log.GetLastPosition())
+        #self.text_log.ShowPosition(self.text_log.GetLastPosition())  # scroll to bottom
         sys.stdout = RedirectPrint(self.text_log)       # redirect stdout
 
         h_sizer = wx.BoxSizer(wx.HORIZONTAL)

@@ -681,8 +681,7 @@ class CmdLine(CmdLineWithAbbrev):
     @options([make_option("-r", "--regex", action = "store", type = "string", dest = "regex", default = "", help = "regular expression to search"),
               make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
               make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file, default: filter_result.txt"),
-              make_option("-l", "--lines", action = "store", type = "string", dest = "lines", default = "3", help = "lines before and after the filtered line"),
-              make_option("-0", "--no_sort", action = "store_true", dest = "no_sort", default = False, help = "do not sort the output logs"),
+              make_option("-l", "--lines", action = "store", type = "string", dest = "lines", default = "0", help = "lines before and after the filtered line"),
              ], "[-p path] [-r regex] [-l 0] [-o output_file] {files(regex)}",
              example = r'''
                 1) filter -p D:\30.Temp\1\190130_151231_Logs\190130_151231_Logs @mux.*txt -r add_cell
@@ -699,10 +698,9 @@ class CmdLine(CmdLineWithAbbrev):
             if os.path.isfile(output_file): WinCmd.del_file(output_file)
             filtered_lines = 0
             for f in files:
-                filtered_lines += self.tool.filter_in_file(f, opts.regex, int(opts.lines), output_file, file_flag = opts.no_sort)
+                filtered_lines += self.tool.filter_in_file(f, opts.regex, int(opts.lines), output_file)
             if filtered_lines:
                 WinCmd.check_file_exist(output_file)
-                if not opts.no_sort: WinCmd.sort_file(output_file)
                 self.tool.print_('Filtered %d lines among %d files to %s successfully!' % (filtered_lines, len(files), output_file))
             else:
                 self.tool.print_('cannot find "%s" among %d files.' % (opts.regex, len(files)))
@@ -2217,7 +2215,7 @@ class TestTool:
                               r'batch_CUE_NAS_NR5G_SA_1CELL_Sept18_Basic.txt',
                               r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_Basic.txt',
                               r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Basic.txt',
-                              r'batch_CUE_NAS_NR5G_ENDC_3CELL_June18_120KHz_Basic.txt',
+                              #r'batch_CUE_NAS_NR5G_ENDC_3CELL_June18_120KHz_Basic.txt',
                               r'batch_OVERNIGHT_CUE_PDCP_NR5G_1CELL.txt',
                               r'batch_OVERNIGHT_CUE_PDCP_NR5G_SCS120KHz.txt',
                               r'batch_OVERNIGHT_CUE_NAS_NR5G_ENDC_2CELL_120Khz.txt',
@@ -2977,12 +2975,12 @@ class TestTool:
 
     def filter_file_with_lines(self, filename, target_lines, output_file, file_flag = True):
         with open(output_file, 'a') as f_write:
-            if file_flag: f_write.write('\n%s %s %s\n\n' % ('#'*20, filename, '#'*20))
+            if file_flag: f_write.write('%s %s %s\n\n' % ('#'*20, filename, '#'*20))
             with open(filename, 'r') as f:
                 target_line = target_lines.pop(0)
                 for line_num, line in enumerate(f):
                     if line_num == target_line:
-                        f_write.write(line)
+                        f_write.write(line.strip() + '\n')
                         if len(target_lines) == 0: break
                         target_line = target_lines.pop(0)
 
@@ -4671,6 +4669,7 @@ class TestTool:
         if select_batches_key:
             select_keys = []
             for key in select_batches_key:
+                key = key.lower()
                 if key not in self.sanity_batches_dict.keys(): raise CmdException('invalid select batches %s' % key)
                 select_keys.append(key)
         else:
