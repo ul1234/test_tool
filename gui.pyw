@@ -166,6 +166,7 @@ class BoxSmokeTest(Box):
         self.add_line([button])
 
     def run(self, event):
+        self.ini_sync_update_write()
         batch = self.choice_batch.GetValue()
         batch_str = '' if batch == 'All' else '-b {}'.format(batch)
         CMD.run('sanity {} {} '.format(batch_str, self.get_project_path()))

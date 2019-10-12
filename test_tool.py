@@ -1187,7 +1187,7 @@ class CmdLine(CmdLineWithAbbrev):
         for tool_file in ['loganalyse.exe', 'loganalyse.dll']:
             WinCmd.check_file_exist(os.path.join(opts.path, tool_file))
         if not opts.force: WinCmd.check_file_exist(os.path.join(opts.path, 'tm500defs.dll'))
-        files = self.tool.get_re_files(os.path.join(opts.path, args[0]))
+        files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
         if not (opts.dsp and opts.only):
             self.tool.log_format(files, domain = 'hlc', no_sort = opts.no_sort, latest = opts.latest)
             self.tool.print_('change %d hlc files log format successfully!' % len(files))
@@ -1642,19 +1642,16 @@ class CmdLine(CmdLineWithAbbrev):
             raise CmdException('cmd "%s" not valid!' % cmd)
         self.tool.print_('%s files finished.' % cmd)
 
-    @options([make_option("-v", "--dynamic_view", action = "store", type = "string", dest = "dynamic_view", default = "Z:", help = "dynamic view path, default: Z:/"),
-              make_option("-0", "--manual", action = "store_true", dest = "manual", default = False, help = "do not change, manual select files and builds"),
+    @options([make_option("-0", "--manual", action = "store_true", dest = "manual", default = False, help = "do not change, manual select files and builds"),
               make_option("-d", "--debug", action = "store_true", dest = "debug", default = False, help = "debug output"),
              ], "[-0] [-v dynamic_view_path] [-d] project_path",
              example = r'''
                 1) presub D:\Projects\swang2_view_cue_tot_feature_2
-                    -- run presub for the folder, use default Z: as dynamic view path
-                2) presub D:\Projects\swang2_view_cue_tot_feature_2 -v X:
-                    -- run presub for the folder, use X: as dynamic view path
+                    -- run presub for the folder
              ''')
     @min_args(1)
     def do_presub(self, args, opts = None):
-        self.tool.presub(args[0], opts.dynamic_view, opts.manual, opts.debug)
+        self.tool.presub(args[0], opts.manual, opts.debug)
         self.tool.print_('presub run ok!')
 
     @options([make_option("-u", "--username", action = "store", type = "string", dest = "username", default = "swang2", help = "username"),
@@ -2127,7 +2124,8 @@ class TestTool:
         self.pxi_path = r'E:\PXI_TV'
         self.aiq_path = r'\\stv-nas.aeroflex.corp\LTE_Test_Vectors\PXI_C'
         #self.rav_path = r'\\stv-nas.aeroflex.corp\LTE_Results_Builds\Release_Candidates\LTE'
-        self.rav_path = r'\\ltn3-pur-lteres.aeroflex.corp\Data'
+        #self.rav_path = r'\\ltn3-pur-lteres.aeroflex.corp\Data'
+        self.rav_path = r'\\ltn3-eud-5gres.aeroflex.corp\Data\Builds';
         self.user_path = os.path.dirname(self.file_path)
         self.binary_path = os.path.join(self.user_path, 'binary')
         self.test_path = os.path.join(self.user_path, 'test')
@@ -2204,8 +2202,9 @@ class TestTool:
         self.temp_sanity_batch_path = r'C:\temp\sanity_batch'
         self.sanity_batch_path = r'C:\wang\03.Batch\sanity'
         self.sanity_batches_config = {'2cell': '2CELL4G5G', '3cell': '3CELL4G5G', 'default': ''}
-        self.sanity_batches_dict = {'2cell': [r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18__Smoke_Tests.txt',
-                                              r'batch_CUE_NAS_NR5G_ENDC_2CELL_June18_120KHz_Smoke_Tests.txt'],
+        self.sanity_batches_dict = {'2cell': [r'batch_NAS_NR5G_ENDC_2CELL_Smoke_Tests.txt',
+                                              r'batch_NAS_NR5G_ENDC_2CELL_120KHz_Smoke_Tests.txt',
+                                              r'batch_MTS_NR5G_ENDC_2CELL_Smoke_Tests.txt'],
                                     '1cell': [r'batch_CUE_PDCP_NR5G_1CELL_Smoke_Tests.txt',
                                               r'batch_CUE_PDCP_NR5G_1CELL_SCS120KHz_Smoke_Tests.txt']}
         self.sanity_batches = reduce(list.__add__, self.sanity_batches_dict.values(), [])
@@ -2811,7 +2810,7 @@ class TestTool:
             WinCmd.check_file_exist(f)
             src_f = os.path.basename(f)
             dest_f = '%s_%s.txt' % (os.path.splitext(src_f)[0], domain)
-            WinCmd.cmd(r'loganalyse.exe %s %s > %s' % (flag, src_f, dest_f), os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
+            WinCmd.cmd(r'loganalyse.exe %s .\%s > %s' % (flag, src_f, dest_f), os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
             if not no_sort: WinCmd.sort_file(os.path.join(os.path.dirname(f), dest_f))
 
     def gen_cpu_symbol(self, project_or_bin_path, cpu_num, reg_value = '', c66cpu_type = False):
@@ -3120,7 +3119,7 @@ class TestTool:
             if hlc_cores_str:
                 devices_filter += ['HLC']
                 device_cores_str += ['HLC_%s' % s for s in hlc_cores_str]
-        pattern = r'LTE\s+(\w+)\s+([\d\.]+)\s+\w'
+        pattern = r'LTE\s+(\w+)\s+([\d\.:]+)\s+\w'
         fpath, fext = os.path.splitext(filename)
         device_cores_write = {}
         files_write = []
@@ -3130,6 +3129,7 @@ class TestTool:
                 if r:
                     device, core_str = r.group(1), r.group(2)
                     device_core_str = '%s_%s' % (device, core_str)
+                    device_core_str = device_core_str.replace(':', '.')
                     if device_core_str in device_cores_str or (device not in devices_filter and 'ALL' not in devices_filter):
                         if not device_core_str in device_cores_write:
                             file_write = '%s_%s%s' % (fpath, device_core_str, fext)
@@ -4697,17 +4697,12 @@ class TestTool:
         if not debug_output:  # remove the copied folder if not debug
             if os.path.isdir(teamcity_copy_path): WinCmd.del_dir(teamcity_copy_path, include_dir = True)
 
-    def presub(self, project_path, dynamic_view_path, manual = False, debug_output = False):
-        temp_file = self.get_temp_filename()
-        if os.path.isfile(temp_file): WinCmd.del_file(temp_file)
-        WinCmd.cmd('cleartool catcs > %s' % temp_file, project_path, showcmdwin = False, wait = True)
-        if not os.path.isfile(temp_file): raise CmdException('cannot export configspec of view: %s' % project_path)
-        WinCmd.cmd('cleartool setcs %s' % temp_file, dynamic_view_path, showcmdwin = False, wait = True)
+    def presub(self, project_path, manual = False, debug_output = False):
         if manual:
-            tool_path, tool_name = os.path.split(self.get_presub(dynamic_view_path))
+            tool_path, tool_name = os.path.split(self.get_presub(project_path))
             WinCmd.cmd(r'python "%s"' % tool_name, tool_path, showcmdwin = False)
         else:
-            teamcity_copy_path = self._copy_teamcity_folder(dynamic_view_path)
+            teamcity_copy_path = self._copy_teamcity_folder(project_path)
             presub_tool = os.path.join(teamcity_copy_path, 'presub.pyw')
             hook_tool = HookToolCacheManager(presub_tool, debug_output = debug_output)
             hook_tool.run()
@@ -5251,7 +5246,7 @@ class TestTool:
                 WinCmd.MessageBox(s)
 
     def check_matlab_user(self):
-        path_candidate = [r'D:\Program Files\MATLAB\R2012b\etc\win64', r'C:\Program Files (x86)\MATLAB\R2009a\bin\win32']
+        path_candidate = [r'C:\Program Files\MATLAB\R2012b\etc\win64', r'C:\Program Files (x86)\MATLAB\R2009a\bin\win32']
         tools_name = 'lmutil.exe'
         tools = [os.path.join(p, tools_name) for p in path_candidate if os.path.isfile(os.path.join(p, tools_name))]
         if not tools: raise CmdException('no files found for: %s' % tools_name)
