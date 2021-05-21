@@ -1180,8 +1180,8 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-d", "--dsp", action = "store_true", dest = "dsp", default = False, help = "dsp files"),
               make_option("-f", "--force", action = "store_true", dest = "force", default = False, help = "force gen log, do not check file exist"),
               make_option("-z", "--latest", action = "store_true", dest = "latest", default = False, help = "latest file with all found files"),
-              make_option("-0", "--no_sort", action = "store_true", dest = "no_sort", default = False, help = "do not sort the logs"),
-             ], "[-0] [-p path] [-d] [-o] [-z] [-f] {files(regex)}")
+              make_option("-s", "--sort", action = "store_true", dest = "sort", default = False, help = "sort the logs"),
+             ], "[-s] [-p path] [-d] [-o] [-z] [-f] {files(regex)}")
     @min_args(1)
     def do_gen_log(self, args, opts = None):
         for tool_file in ['loganalyse.exe', 'loganalyse.dll']:
@@ -1189,12 +1189,11 @@ class CmdLine(CmdLineWithAbbrev):
         if not opts.force: WinCmd.check_file_exist(os.path.join(opts.path, 'tm500defs.dll'))
         files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
         if not (opts.dsp and opts.only):
-            self.tool.log_format(files, domain = 'hlc', no_sort = opts.no_sort, latest = opts.latest)
+            self.tool.log_format(files, domain = 'hlc', sort = opts.sort, latest = opts.latest)
             self.tool.print_('change %d hlc files log format successfully!' % len(files))
         if opts.dsp:
-            self.tool.log_format(files, domain = 'dsp', no_sort = opts.no_sort, latest = opts.latest)
+            self.tool.log_format(files, domain = 'dsp', sort = opts.sort, latest = opts.latest)
             self.tool.print_('change %d dsp files log format successfully!' % len(files))
-        self.tool.print_('if the output file is zero length, try with -0 no sort option.')
 
     @options([make_option("-f", "--farm", action = "store", type = "string", dest = "farm", default = "", help = "farm machine, ip: FARM14: 10.120.163.114"),
              ], "[-f farm] {ulan_ver(e.g. 2.6)}")
@@ -2797,7 +2796,7 @@ class TestTool:
                 self.load_binary(bin)
                 self.run_fum()
 
-    def log_format(self, files, domain = 'dsp', no_sort = False, latest = False):
+    def log_format(self, files, domain = 'dsp', sort = False, latest = False):
         if not isinstance(files, list): files = [files]
         flags = {'dsp': '-ddsp', 'hlc': '-dhlc', 'umbra': '-dumbra'}
         if not domain in flags: raise CmdException('invalid domain %s' % domain)
@@ -2811,7 +2810,7 @@ class TestTool:
             src_f = os.path.basename(f)
             dest_f = '%s_%s.txt' % (os.path.splitext(src_f)[0], domain)
             WinCmd.cmd(r'loganalyse.exe %s .\%s > %s' % (flag, src_f, dest_f), os.path.dirname(f), showcmdwin = True, minwin = True, wait = True)
-            if not no_sort: WinCmd.sort_file(os.path.join(os.path.dirname(f), dest_f))
+            if sort: WinCmd.sort_file(os.path.join(os.path.dirname(f), dest_f))
 
     def gen_cpu_symbol(self, project_or_bin_path, cpu_num, reg_value = '', c66cpu_type = False):
         ti_tool = 'nm6x.exe'
@@ -4420,7 +4419,7 @@ class TestTool:
         WinCmd.check_file_exist(os.path.join(hde_tool_path, hde_kill_cmd) if hde_tool_path else hde_kill_cmd)
 
         for index, usf_file in enumerate(usf_files):
-            vumbra_file = 'vumbra%s.opts' % ('' if index == 0 else str(index))
+            vumbra_file = 'vumbra%s.opts' % ('' if index == 0 else '0_%s' % str(index))
             vumbra_file = os.path.join(hde_tool_path, vumbra_file) if hde_tool_path else vumbra_file
             if not os.path.isfile(vumbra_file):
                 WinCmd.cmd('%s -n %d %s' % (vmbra_cmd, index, usf_file), hde_tool_path, showcmdwin = True, wait = False)
@@ -4492,6 +4491,12 @@ class TestTool:
             return []
         def _parse_switch_vector(line):
             ## NR5G
+            # USRP_SYSTEM : USRPs [[0, 1]] Change to TV vector_number: 0, latency: 0.5,  total delay: 0.66, old TV length: 0 secs, new TV length: 0.16 secs
+            s = re.search(r'USRP_SYSTEM\s*:.*?USRPs\s*\[(.*?)\].*Change to TV vector_number:\s*(\d),.*', line)  # vector
+            if s:
+                total_line, pxi_ant, vector_index = s.group(0), s.group(1), s.group(2)
+                pxi_ant = list(map(int, pxi_ant.strip().strip('[]').split(',')))
+                return [total_line, pxi_ant, vector_index]
             # USRP_SYSTEM : All USRPs [[0, 1]] Change TV vector_number: 0  delay: 1.78 TV length 0.08 secs
             # USRP_SYSTEM : USRP [0] SERVER [0] antenna (0,1) Change TV num: 1  delay: 0 TV 0.0133333333333 secs
             # USRP_SYSTEM : This siggen 0 is grouped with [0, 1] , group id 0, therfore all siggens were sync to  tv number 1
@@ -4541,7 +4546,7 @@ class TestTool:
                     pos = pos + len('MCI: Running command:')
                     command = self._remove_html_tag(line[pos:].strip())
                     if start_comment: command = '#' + command
-                    elif command.find('Delete') >= 0 or command.find('Deregister') >= 0 or command.startswith('GUMS') or command.startswith('gsen'):
+                    elif command.find('Delete') >= 0 or command.find('Deregister') >= 0 or command.startswith('GUMS') or command.startswith('gsen') or command.startswith('sftp') or command.startswith('DTRC'):
                         command = '#' + command
                         start_comment = True
                     elif command.lower().find('lcfg dsp ') >= 0 or command.lower().find('lcfg hlc ') >= 0 or command.lower().find('lcfg umb ') >= 0:
@@ -4563,7 +4568,10 @@ class TestTool:
                     total_line, pxi_ant, vector_index = result
                     if f_write:
                         f_write.write('\n###' + self._remove_html_tag(total_line) + '\n')
-                        f_write.write('#swiv %d %s\n\n' % (0 if pxi_ant == '0' else 1, vector_index))
+                        if not isinstance(pxi_ant, list): pxi_ant = [pxi_ant]
+                        for ant in pxi_ant:
+                            f_write.write('#swiv %d %s\n' % (int(ant), vector_index))
+                        f_write.write('wait 1\n\n')
                     if first_dcch_msg_after_switch_vector: check_first_dcch_msg = True
                     continue
                 result = _parse_wait_cmd(line)
