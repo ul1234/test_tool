@@ -765,7 +765,7 @@ class CmdLine(CmdLineWithAbbrev):
               make_option("-0", "--only_dedicated", action = "store_true", dest = "only_dedicated", default = False, help = "only_dedicated core extraced, default is all, include dsp,hlc,umb,etc."),
               make_option("-z", "--latest", action = "store_true", dest = "latest", default = False, help = "latest file with all found files"),
               make_option("-x", "--remove_size", action = "store", type = "string", dest = "remove_size", default = "200", help = "remove files that size smaller than size, default: 200 KBytes)"),
-             ], "[-p path] [-d dsp_cores] [-h hlc_cores] [-0] [-z] [-x remove_size] {files(regex)}")
+             ], "[-p path] [-d dsp_cores] [-m hlc_cores] [-0] [-z] [-x remove_size] {files(regex)}")
     @min_args(1)
     def do_extract_log(self, args, opts = None):
         re_files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
