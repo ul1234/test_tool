@@ -769,14 +769,19 @@ class CmdLine(CmdLineWithAbbrev):
     def do_combine(self, args, opts = None):
         files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
         if files:
-            files.sort()
-            output_file_name, output_file_ext = os.path.splitext(files[0])
-            output_file = '%s_combine%s' % (output_file_name, output_file_ext)
-            with open(output_file, 'w') as f_write:
-                for f in files:
-                    f_write.write(open(f).read())
-                    f_write.write('\r\n')
-            self.tool.print_('combine file to %s successfully!' % os.path.basename(output_file))
+            self.tool.combine(files)
+        else:
+             self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
+
+    @options([make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
+             ], "[-p path] {files(regex)}")
+    @min_args(1)
+    def do_combine_log(self, args, opts = None):
+        files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args])
+        if files:
+            output_file = self.tool.combine(files)
+            WinCmd.sort_file(output_file)
+            self.tool.print_('sort files OK.')
         else:
              self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
 
@@ -2470,6 +2475,17 @@ class TestTool:
             WinCmd.check_file_exist(ulan_file)
             WinCmd.copy_file(ulan_file, dest_folder)
             self.print_('ulan version changed to %s (from %s to %s)' % (ulan_ver, os.path.dirname(ulan_file), dest_folder))
+
+    def combine(self, files):
+        files.sort()
+        output_file_name, output_file_ext = os.path.splitext(files[0])
+        output_file = '%s_combine%s' % (output_file_name, output_file_ext)
+        with open(output_file, 'w') as f_write:
+            for f in files:
+                f_write.write(open(f).read())
+                f_write.write('\r\n')
+        self.print_('combine file to %s successfully!' % os.path.basename(output_file))
+        return output_file
 
     def get_run1_folder(self):
         if not os.path.isfile(self.run1_config_file):
