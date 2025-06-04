@@ -9,4 +9,5 @@ tsms/
 .idea/
 teamcity/
 venv/
+py_extension
 
