@@ -680,25 +680,23 @@ class CmdLine(CmdLineWithAbbrev):
                 break
         if not files: self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
 
-    @options([make_option("-r", "--regex", action = "store", type = "string", dest = "regex", default = "", help = "regular expression to search"),
-              make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
+    @options([make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
               make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file, default: filter_result.txt"),
-              make_option("-l", "--lines", action = "store", type = "string", dest = "lines", default = "0", help = "lines before and after the filtered line"),
-             ], "[-p path] [-o output_file] {files(regex)}")
+             ], "[-t type] [-p path] [-o output_file] {files(regex)}")
     @min_args(1)
     def do_gnb_log(self, args, opts = None):
         files = self.tool.get_re_files([os.path.join(opts.path, a) for a in args], sort_by_time = True)
         if not files:
             self.tool.print_('no files found from %s' % str([os.path.join(opts.path, a) for a in args]))
         else:
-            output_file = opts.output or 'result.txt'
+            output_file = opts.output or f"result.txt"
             output_file = os.path.join(opts.path, output_file)
             if os.path.isfile(output_file): WinCmd.del_file(output_file)
-            
+
             gnb_log = gnbLog()
-            gnb_log.process_folder(files, output_file)
-            self.tool.print_('generate %s!' % output_file)
-        
+            result = gnb_log.process(files, output_file)
+            if result: self.tool.print_('generate %s!' % output_file)
+
     @options([make_option("-r", "--regex", action = "store", type = "string", dest = "regex", default = "", help = "regular expression to search"),
               make_option("-p", "--path", action = "store", type = "string", dest = "path", default = "", help = "data folder to be processed"),
               make_option("-o", "--output", action = "store", type = "string", dest = "output", default = "", help = "output result file, default: filter_result.txt"),
