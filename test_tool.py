@@ -3,7 +3,7 @@
 
 from optparse import OptionParser, make_option, OptParseError
 from glob import glob
-import os, re, sys, traceback, cmd, time, ConfigParser, urllib2, socket, threading, urllib, subprocess
+import os, re, sys, traceback, cmd, time, configparser, urllib.request, socket, threading, urllib, subprocess
 import win32api, win32gui, win32con
 from decorator import thread_func, use_system32_on_64bit_system
 from datetime import datetime, timedelta
@@ -18,6 +18,7 @@ from check import CodeCheck
 from tc import TC
 from hook_tc import HookToolCacheManager, TeamcityIni
 from gnb_log import gnbLog
+from functools import reduce
 # import readline
 
 ######################## command line interface ##########################
@@ -87,12 +88,12 @@ def options(option_list, usage = '', example = ''):
                 result = func(instance, new_args, opts)
                 return result
             except CmdException as e:
-                print '%s RUN EXCEPTION: %s\n' % (func_name, e)
+                print ('%s RUN EXCEPTION: %s\n' % (func_name, e))
                 optParser.print_help()
                 return
             except Exception as e:
-                print '%s RUN EXCEPTION: %s\n' % (func_name, e)
-                print traceback.format_exc()
+                print ('%s RUN EXCEPTION: %s\n' % (func_name, e))
+                print (traceback.format_exc())
                 optParser.print_help()
                 return
         func_doc = ('%s\n' % func.__doc__) if func.__doc__ else ''
@@ -2132,7 +2133,7 @@ class TestTool:
         self.debug_enable = False
         self.local_ip = None
         self.analyse_path = ''
-        self.ini = ConfigParser.ConfigParser()
+        self.ini = configparser.ConfigParser()
         self.re_delimiters = ['@', '\"']     # delimiter: @ or ", the same key in Chinese and British keyboard respectively
         self.option_delimiters = ['|', '~']  # delimiter | or ~
 
@@ -2611,7 +2612,7 @@ class TestTool:
         if self.debug_enable:
             self.print_('Try to get the url: %s' % url)
         try:
-            html = urllib2.urlopen(url, timeout = 3)
+            html = urllib.request.urlopen(url, timeout = 3)
         except Exception as e:
             raise CmdException('open RAV page error! "%s", %s' % (url, e))
         return html
@@ -2685,7 +2686,7 @@ class TestTool:
                 if not case_num in test_cases: test_cases[case_num] = []
                 if not batch in test_cases[case_num]: test_cases[case_num].append(batch)
         rav_cases_num = list(set(self._get_rav_cases(product)))
-        #print rav_cases_num
+        #print (rav_cases_num)
         output_batches = []
         rav_cases_not_in_batch = []
         redundant_cases_in_batch = []
@@ -2747,7 +2748,7 @@ class TestTool:
         features_2 = ['beamforming', 'embms', '8x2', '_ca']
         #order = [('harq', 'normal'), ('mac', 'normal'), ('pdcp', 'normal'), ('rlc', 'normal'), ('nas', 'normal'),
         remain_batches, ordered_batches, ordered_batches_for_print = batches, [], []
-        #print 'batches:', len(batches), batches
+        #print ('batches:', len(batches), batches)
         for mode in modes:
             select_batches = select_match_batch(remain_batches, mode)
             remain_batches = list(set(remain_batches) - set(select_batches))
@@ -2757,11 +2758,11 @@ class TestTool:
             batches_default = list(set(select_batches) - set(batches_1))
             ordered_batches += batches_1 + batches_default + batches_2
             ordered_batches_for_print += batches_1 + batches_default + batches_2 + [None]
-        #print 'ordered_batches:', len(ordered_batches), ordered_batches
-        #print 'remain_batches:', len(remain_batches), remain_batches
+        #print ('ordered_batches:', len(ordered_batches), ordered_batches)
+        #print ('remain_batches:', len(remain_batches), remain_batches)
         ordered_batches += remain_batches
         ordered_batches_for_print += remain_batches
-        #print 'ordered_batches:', len(ordered_batches), ordered_batches
+        #print ('ordered_batches:', len(ordered_batches), ordered_batches)
         if len(ordered_batches) != len(batches): raise CmdException('batches %d ordered to %d!' % (len(batches), len(ordered_batches)))
         return ordered_batches, ordered_batches_for_print
 
@@ -3890,7 +3891,7 @@ class TestTool:
         else:
             url = self.rav_url_product_search[product] + case
             #try:
-            #    html = urllib2.urlopen(url, timeout = 3)
+            #    html = urllib.request.urlopen(url, timeout = 3)
             #except Exception as e:
             #    raise CmdException('open RAV page error! "%s", %s' % (url, e))
             #if not os.path.isdir(self.temp_path): WinCmd.make_dir(self.temp_path)
@@ -4889,7 +4890,7 @@ class TestTool:
     def _get_file_list_from_clearquest(self, url):
         if not url.endswith('/'): url += '/'
         try:
-            html = urllib2.urlopen(url, timeout = 5).read()
+            html = urllib.request.urlopen(url, timeout = 5).read()
         except Exception as e:
             raise CmdException('open html error! "%s", %s' % (url, e))
         temp_list = re.findall(r'<a href[^>]+>[^<]+</a>\s*\d{2}-\w+-\d{4}', html)
@@ -4925,7 +4926,7 @@ class TestTool:
                 content = None
                 block_size = 10*1024*1024  # read 10M bytes at a time
                 try:
-                    response = urllib2.urlopen(f_url, timeout = 5)
+                    response = urllib.request.urlopen(f_url, timeout = 5)
                     content = response.read(block_size)
                 except Exception as e:
                     #raise CmdException('open html error! "%s", %s' % (f_url, e))
@@ -4959,7 +4960,7 @@ class TestTool:
         block_size = 10*1024*1024  # read 10M bytes at a time
         try:
             self.print_('get: %s' % file_url)
-            response = urllib2.urlopen(file_url, timeout = 10)
+            response = urllib.request.urlopen(file_url, timeout = 10)
             content = response.read(block_size)
         except Exception as e:
             self.print_('open html error! "%s", %s' % (file_url, e))
@@ -5457,5 +5458,5 @@ if __name__ == '__main__':
                     remote_call = True
                 else:
                     remote_call = False
-                print '%s>python %s start' % (os.path.split(os.path.abspath(__file__)))
+                print ('%s>python %s start' % (os.path.split(os.path.abspath(__file__))))
                 CmdLine(remote_call = remote_call).cmdloop()

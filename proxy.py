@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import socket, threading, select, ctypes, sys, re, urllib2
-import _winreg as winreg
+import socket, threading, select, ctypes, sys, re, urllib.request
+import winreg
 from datetime import datetime
 
 DEFAULT_PORT = 1234
@@ -25,7 +25,7 @@ class HackHandler(object):
             <body>
             </body>
             </html>''' % new_url
-        print 'redirect to %s' % new_url
+        print ('redirect to %s' % new_url)
         return HackHandler.STATUS_BYPASS, content
 
     def _html_body(self, body, head = ''):
@@ -36,7 +36,7 @@ class HackHandler(object):
             %s
             </body>
             </html>''' % (head, body)
-        print 'populate html response'
+        print ('populate html response')
         return HackHandler.STATUS_BYPASS, content
 
     def _html_head(self, content):
@@ -214,10 +214,10 @@ class HackHandler(object):
         try_times = 3
         for i in range(try_times):
             try:
-                content = urllib2.urlopen(url, timeout = 10).read()
+                content = urllib.request.urlopen(url, timeout = 10).read()
                 break
             except Exception as e:
-                if i < (try_times-1): print 'Exception [%d]:' % (i+1), e, ',', url
+                if i < (try_times-1): print ('Exception [%d]:' % (i+1), e, ',', url)
         if content is None: raise Exception('Exception [%d]: fail to retrieve %s' % (try_times, url))
         return content
 
@@ -256,10 +256,10 @@ class HackHandler(object):
         return None
 
     def _thread_get_info(self, info_url, lock, sem, index, content, head):
-        #print 'url', url
+        #print ('url', url)
         build_label, url = info_url
         with sem:
-            with lock: print 'retrieve  ', url
+            with lock: print ('retrieve  ', url)
             info = self._urlopen(url)
         with lock:
             if not head:
@@ -272,7 +272,7 @@ class HackHandler(object):
             if pos >= 0:
                 content.append((index, info))
             else:
-                print 'ERROR: no <body> found in ', url
+                print ('ERROR: no <body> found in ', url)
 
     def _http_get_ukrav_history_3(self, url):
         # http://ukrav/results/get_result_rav.php?t=%s&tnum=%s
@@ -288,7 +288,7 @@ class HackHandler(object):
             for r in re.finditer(r"<tr><td>([^<]*?)</td><td>.*?</td><td>([^<]*?)</td><td class='(\w+)'>.*?</td></tr>", content):
                 info_url = info_url_pattern % (product, r.group(2), test_case)
                 build_label = r.group(1)
-                #print 'add', r.group(3), info_url
+                #print ('add', r.group(3), info_url)
                 if r.group(3).lower() != 'pass':
                     info_urls.append((build_label, info_url))
             if len(info_urls) > MAX_HISTORY_INFO_NUM: info_urls = info_urls[-MAX_HISTORY_INFO_NUM:]
@@ -332,7 +332,7 @@ class HackHandler(object):
 
     def _thread_get_rav_summary(self, lock, sem, url, all_case_info = {}):
         with sem:
-            with lock: print 'retrieve  ', url
+            with lock: print ('retrieve  ', url)
             content = self._urlopen(url)
         for r in re.finditer(r'data\.setCell\(\d+,\s*0,\D+(\d{5})[^\)]+\);\s*data\.setCell\(\d+,\s*1,[^;]*?(file:[^>]*.html)>(\d{5}_[^<]+)<[^;]+\);[^;]*;\s*data\.setCell\(\d+,\s*3,[^;]*?<span[^>]+>(.*?)</[^;]*\);', content):
             case_num, file_link, case_name, info = r.group(1), r.group(2), r.group(3), r.group(4)
@@ -341,7 +341,7 @@ class HackHandler(object):
                 info = re.sub(r'(\d{2}:\d{2}:\d{2}\.\d{4})', r'<br>\1', info)[4:]  # remove the first <br>
             if case_num in all_case_info: raise Exception('identical case num %s, %s' % (case_num, case_name))
             all_case_info[case_num] = (case_name, file_link, info)
-        with lock: print 'retrieve info ok from %s' % url
+        with lock: print ('retrieve info ok from %s' % url)
 
     def _http_get_ukrav_history_5(self, url):
         # http://ukrav/results/summary_plot.php?table=lte_3gpp_fdd_platc_cue&trun=RAV52_15_02_24_18_24
@@ -350,7 +350,7 @@ class HackHandler(object):
             summary_part_url, product, rav_run = r.group(1), r.group(2), r.group(3)
             # http://ukrav/results/tables_30.php?page=lte_3gpp_fdd_platc_cue
             info_url = r'http://ukrav/results/tables_30.php?page=%s' % product
-            print 'retrieve ', info_url
+            print ('retrieve ', info_url)
             content = self._urlopen(info_url)
             content = content.replace('<br>', '\n')
             ### 1. remove Notes and History tag
@@ -388,7 +388,7 @@ class HackHandler(object):
                 threads.append(threading.Thread(target = self._thread_get_rav_summary, args = (lock, sem, summary_url, all_info[rav_run])))
             for t in threads: t.start()
             for t in threads: t.join()
-            print 'all summary info retrieved'
+            print ('all summary info retrieved')
             #####  retrieve end ##################
             table = zip(*tuple(table_list))
             cases, result = table[0], table[process_index]
@@ -413,14 +413,14 @@ class HackHandler(object):
                         break
                 if not found:
                     num['Unknown'] += 1
-                    print 'Unknown: %s, %s' % (cases[index], r)
+                    print ('Unknown: %s, %s' % (cases[index], r))
             html_content = self._html_summarize(num)
             rows['SameAsToT'] = []
             for rslt in ['CRASH', 'FAIL', 'FATAL', 'Other']:
                 remove_list = []
                 for row in rows[rslt]:
                     if self._same_fail_as_tot_or_platform_issue(table_head, table_list[row], process_index, all_info):
-                        print 'same as tot,', table_list[row][0].split('\n')
+                        print ('same as tot,', table_list[row][0].split('\n'))
                         remove_list.append(row)
                 rows['SameAsToT'] += remove_list
                 for r in remove_list: rows[rslt].remove(r)
@@ -518,7 +518,7 @@ class HackHandler(object):
                 case_name, file_link, info_str = all_info[rav_run][case_num]
                 file_link = file_link.replace('\\\\', '\\')
                 rslt_str = '<a href="%s" class="%s">%s</a>' % (file_link, rslt, rslt)
-                if case.find(case_name) < 0: print 'case name not the same, %s, %s' % (case, case_name)
+                if case.find(case_name) < 0: print ('case name not the same, %s, %s' % (case, case_name))
             result_table += '<tr%s><td%s>%s</td><td%s>%s</td><td class="%s">%s</td><td class="info%s">%s</td></tr>' % (highlight_id, highlight_class, build, highlight_class, rav_run, rslt, rslt_str, info_highlight, info_str)
         # [<a href='full_test_history.php?page=lte_3gpp_fdd_platc_cue&test_number=32891' target='_blank'>History</a>]
         content = r'<table><tr><th colspan=4>%s [<a href="full_test_history.php?page=%s&test_number=%s">History</a>] [<a href="#%s">To Case</a>]</th></tr>%s</table>' % (case, product, case_num, case_num, result_table)
@@ -553,7 +553,7 @@ class ConnectionHandler(object):
                                          'DELETE', 'TRACE'):
                         self.method_others()
         except Exception as e:
-            print e
+            print (e)
         self.client.close()
         if self.target: self.target.close()
 
@@ -563,7 +563,7 @@ class ConnectionHandler(object):
             end = self.client_buffer.find('\n')
             if end != -1:
                 break
-        print '%s' % self.client_buffer[:end]     # debug
+        print ('%s' % self.client_buffer[:end])     # debug
         data = (self.client_buffer[:end+1]).split()
         self.client_buffer = self.client_buffer[end+1:]
         return data
@@ -625,21 +625,21 @@ class ProxyServer(object):
         self.handler = handler
         self.timeout = timeout
         self.hack_handler = hack_handler
-        self.disable_urllib2_proxy()
+        self.disable_urllib.request_proxy()
 
     def serve_forever(self):
         soc = socket.socket(socket.AF_INET)
         soc.bind(self.server_socket)
-        print "Serving on %s:%d..." % self.server_socket
+        print ("Serving on %s:%d..." % self.server_socket)
         soc.listen(0)
         while True:
             threading.Thread(target = self.handler, args = soc.accept()+(self.timeout, self.hack_handler)).start()
 
     def disable_urllib2_proxy(self):
-        #proxy_handler = urllib2.ProxyHandler({"http":"http://127.0.0.1:1234"})
-        proxy_handler = urllib2.ProxyHandler({})  # no http proxy in urllib2
-        opener = urllib2.build_opener(proxy_handler)
-        urllib2.install_opener(opener)
+        #proxy_handler = urllib.request.ProxyHandler({"http":"http://127.0.0.1:1234"})
+        proxy_handler = urllib.request.ProxyHandler({})  # no http proxy in urllib.request
+        opener = urllib.request.build_opener(proxy_handler)
+        urllib.request.install_opener(opener)
 
 
 class Registry(object):
@@ -709,7 +709,7 @@ class StrTool:
         short_str, long_str = (str2, str1) if len(str1) > len(str2) else (str1, str2)
         rows, cols = len(short_str) + 1,  len(long_str) + 1
         matrix = [range(cols) for x in range(rows)]
-        #print matrix
+        #print (matrix)
         for i in range(1,rows):
             for j in range(1,cols):
                 deletion = matrix[i-1][j] + 1
@@ -718,7 +718,7 @@ class StrTool:
                 if short_str[i-1] != long_str[j-1]:
                     substitution += 1
                 matrix[i][j] = min(insertion, deletion, substitution)
-        #print matrix
+        #print (matrix)
         return matrix[rows-1][cols-1]
 
 

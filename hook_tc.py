@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #import wx
-import os, sys, traceback, ConfigParser
+import os, sys, traceback, configparser
 from decorator import thread_func, hook_func
 from hook_tool import HookTool
 from wincmd import WinCmd
@@ -11,7 +11,7 @@ from wincmd import WinCmd
 class TeamcityIni:
     def __init__(self, ini_file):
         WinCmd.check_file_exist(ini_file)
-        self.ini = ConfigParser.RawConfigParser()
+        self.ini = configparser.RawConfigParser()
         self.ini.optionxform = lambda option: option  # preserve the lower/upper case
         self.ini_file = ini_file
         self.ini.read(ini_file)

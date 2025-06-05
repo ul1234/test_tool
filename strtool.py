@@ -18,7 +18,7 @@ class StrTool:
         short_str, long_str = (str2, str1) if len(str1) > len(str2) else (str1, str2)
         rows, cols = len(short_str) + 1,  len(long_str) + 1
         matrix = [range(cols) for x in range(rows)]
-        #print matrix
+        #print (matrix)
         for i in range(1,rows):
             for j in range(1,cols):
                 deletion = matrix[i-1][j] + 1
@@ -27,13 +27,13 @@ class StrTool:
                 if short_str[i-1] != long_str[j-1]:
                     substitution += 1
                 matrix[i][j] = min(insertion, deletion, substitution)
-        #print matrix
+        #print (matrix)
         return matrix[rows-1][cols-1]
 
 if __name__ == "__main__":
-    print StrTool.similar('abbbbbbba','abbbbbbbb')
-    print StrTool.similar('abc','abe')
-    print StrTool.similar('aabc','abe')
-    print StrTool.similar('abca','abeefff')
-    print StrTool.similar("TTMRUNNER: FAIL: UE0: Channel DL-SCH (Codeword: 0), ['BLER'] is NOT in range 0.9114 - 0.99 (it is ('UE0: ', 'DL-SCH (Codeword: 0)', ['BLER'], [0.91139999999999999, 0.98999999999999999], 0.99166666670000003))",
-                            "TTMRUNNER: FAIL: UE0: Channel DL-SCH (Codeword: 0), ['BLER'] is NOT in range 0.9114 - 0.99 (it is ('UE0: ', 'DL-SCH (Codeword: 0)', ['BLER'], [0.91139999999999999, 0.98999999999999999], 0.99594059410000002))")
+    print (StrTool.similar('abbbbbbba','abbbbbbbb'))
+    print (StrTool.similar('abc','abe'))
+    print (StrTool.similar('aabc','abe'))
+    print (StrTool.similar('abca','abeefff'))
+    print (StrTool.similar("TTMRUNNER: FAIL: UE0: Channel DL-SCH (Codeword: 0), ['BLER'] is NOT in range 0.9114 - 0.99 (it is ('UE0: ', 'DL-SCH (Codeword: 0)', ['BLER'], [0.91139999999999999, 0.98999999999999999], 0.99166666670000003))",
+                            "TTMRUNNER: FAIL: UE0: Channel DL-SCH (Codeword: 0), ['BLER'] is NOT in range 0.9114 - 0.99 (it is ('UE0: ', 'DL-SCH (Codeword: 0)', ['BLER'], [0.91139999999999999, 0.98999999999999999], 0.99594059410000002))"))

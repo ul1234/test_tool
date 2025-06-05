@@ -149,7 +149,7 @@ class ClipComm:
         if hasattr(self, 'total_bytes') and hasattr(self, 'transfer_bytes'):
             if total_bytes == self.total_bytes and transfer_bytes != self.transfer_bytes:
                 _print_transfer(total_bytes, transfer_bytes)
-                if transfer_bytes == total_bytes: print '\n'
+                if transfer_bytes == total_bytes: print ('\n')
         self.total_bytes, self.transfer_bytes = total_bytes, transfer_bytes
 
     def _unpack(self, text):
@@ -346,13 +346,13 @@ if __name__ == '__main__':
     else:
         if len(sys.argv) < 2:
             comm = ClipComm()
-            print 'start receiving...'
+            print ('start receiving...')
             file = comm.receive_file()
             comm.dec_file(file, '.')
         else:
-            #print 'Usage: *.py file_or_dir max_tx_bytes'
+            #print ('Usage: *.py file_or_dir max_tx_bytes')
             if len(sys.argv) > 2: comm = ClipComm('client', int(sys.argv[2]))
             else: comm = ClipComm('client')
-            print 'start send %s...' % sys.argv[1]
+            print ('start send %s...' % sys.argv[1])
             file = comm.enc_file([sys.argv[1]])
             comm.send_file(file)

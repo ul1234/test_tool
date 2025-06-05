@@ -1,8 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import urllib, urllib2, cookielib, re, os, time
-import cPickle as pickle
+import urllib, urllib.request, re, os, time
+import http.cookiejar as cookielib
+import pickle
 from datetime import datetime, timedelta
 
 
@@ -31,7 +32,7 @@ class TSMS:
         self.debug_log = debug_log
 
     def print_(self, msg):
-        print msg
+        print (msg)
 
     def debug_print(self, msg):
         if self.debug_log: self.print_(msg)
@@ -43,8 +44,8 @@ class TSMS:
     def login_and_save_cookie(self):
         self.debug_print('getting login page...')
         cookie = cookielib.MozillaCookieJar(self.cookie_file)
-        handler = urllib2.HTTPCookieProcessor(cookie)
-        opener = urllib2.build_opener(handler)
+        handler = urllib.request.HTTPCookieProcessor(cookie)
+        opener = urllib.request.build_opener(handler)
         response = opener.open(self.url)
         data = response.read()
         #<input type=\'hidden\' name=\'csrfmiddlewaretoken\' value=\'Iv2B8xdW09qzkq0GBOmQY1z5WvQxTcWf\' />\n
@@ -67,9 +68,9 @@ class TSMS:
         cookie.load(self.cookie_file, ignore_discard=True, ignore_expires=True)
         token = [c.value for c in cookie if c.name == 'csrftoken']
         assert len(token) == 1, 'invalid token: %s' % str(token)
-        #urllib2build_openeropener
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie))
-        urllib2.install_opener(opener)
+        #urllib.requestbuild_openeropener
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie))
+        urllib.request.install_opener(opener)
         self.debug_print('loaded cookie.')
         return token[0]
 
@@ -85,7 +86,7 @@ class TSMS:
         if post_data: self.debug_print('Post Data: %s' % post_data)
         try:
             start_time = time.time()
-            rsp = urllib2.urlopen(url, data = post_data, timeout = timeout)
+            rsp = urllib.request.urlopen(url, data = post_data, timeout = timeout)
             elapse_time = time.time() - start_time
         except Exception as e:
             self.print_(e)
@@ -359,7 +360,7 @@ if __name__ == '__main__':
     import pprint
     #pprint.pprint(data)
     #ip = tsms.find_ip('RAV21')
-    #print ip
+    #print (ip)
     #tsms.save_current_page(r'temp/debug.txt')
     #time_list, machine_dict = tsms.get_current_booking(r'temp/debug.txt')
     #pprint.pprint(time_list)

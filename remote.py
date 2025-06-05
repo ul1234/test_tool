@@ -92,7 +92,7 @@ class RunProxy(object):
         self.version = datetime.fromtimestamp(os.stat(__file__).st_mtime).strftime('%y%m%d_%H%M%S')
         if log_to_file:
             log_filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'remote', 'remote_server_log_%d.txt' % server_index)
-            print log_filename
+            print (log_filename)
             self.output_file = open(log_filename, 'w')
         self.print_('remote proxy server start...')
         self.print_('Down File: %s' % self.down_file)
@@ -214,9 +214,7 @@ class RunProxy(object):
             self.print_('test info 1: %d' % index)
         _print_test_info(1)
         input = raw_input('keep deamon running! press any key to terminate...\n')
-        print 'gogo'
         #self._update_self()
-        print 'gogo............'
         self.print_('test end')
 
 
@@ -232,13 +230,8 @@ if __name__ == '__main__':
         prxy.keep()
     else:  # test
         remote = Remote()
-        print 'haha'
-        print 'haha2'
         remote.clear()
-        print 'haha3'
-        print 'haha4'
         assert False, 'error h'
-        print 'hehe'
 
 
 

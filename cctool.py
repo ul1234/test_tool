@@ -63,7 +63,7 @@ class CcTool:
             else:
                 branch_time_user = ()
         except Exception as e:
-            print 'branch [%s] Exception:' % branch_name, e
+            print ('branch [%s] Exception:' % branch_name, e)
             branch_time_user = ()
         return branch_time_user, lines[:min(len(lines), 2)]
 

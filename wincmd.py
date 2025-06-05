@@ -223,7 +223,7 @@ class WinCmd:
             cmd_str = r'start %s %s cmd.exe %s "%s%s%s"' % (min_str, wait_str, retain_str, title_str, path_str, command)
         else:
             cmd_str = r'%s%s' % (path_str, command)
-        if WinCmd.SHOW_CMD_STRING: print '[RUN CMD] %s' % cmd_str
+        if WinCmd.SHOW_CMD_STRING: print ('[RUN CMD] %s' % cmd_str)
         os.system(cmd_str)
 
     @staticmethod
@@ -233,7 +233,7 @@ class WinCmd:
             command = r'%s%s' % (path_str, command)
         elif path:
             command = os.path.join(path, command)
-        if WinCmd.SHOW_CMD_STRING: print '[PROCESS, shell=%s] %s' % (shell, command)
+        if WinCmd.SHOW_CMD_STRING: print ('[PROCESS, shell=%s] %s' % (shell, command))
         p = subprocess.Popen(command, shell = shell)
         if wait:
             result = p.wait()
@@ -348,4 +348,4 @@ class Profile:
 
 if __name__ == '__main__':
     #WinCmd.copy_dir(r'E:\11.Temp\test1\11', r'E:\11.Temp\test1\22', True)
-    print WinCmd.cmp_folder(r'E:\tool\temp\All Batch', r'E:\tool\All Batch')
+    print (WinCmd.cmp_folder(r'E:\tool\temp\All Batch', r'E:\tool\All Batch'))

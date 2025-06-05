@@ -3,7 +3,7 @@
 
 import hashlib, re, os
 import pprint
-import cPickle as pickle
+import pickle
 import base64, zlib
 from wincmd import WinCmd
 
@@ -101,7 +101,7 @@ class FileTool(object):
         src_buf = [buf[start:start+length] for start, length in src_buf_info]
         first_buf, second_buf = (src_buf, rules_data) if src_buf_info[0][0] == 0 else (rules_data, src_buf)
         if len(second_buf) < len(first_buf): second_buf.append('')
-        result_buf = reduce(lambda x,(i,j): x+i+j, zip(first_buf, second_buf), '')
+        result_buf = reduce(lambda x,pair: x+pair[0]+pair[1], zip(first_buf, second_buf), '')
 
         with open(os.path.join(dest_folder, os.path.basename(ref_file)), 'wb') as f:
             f.write(result_buf)
@@ -149,12 +149,12 @@ if __name__ == '__main__':
     #pprint.pprint(info)
     info = tool.gen_folder_info(r'E:\tool\test\trans\swang2_view_mue_ul_harm_int_2x2_FDD')
     s = tool.object_to_string(info)
-    print len(s)
+    print (len(s))
     #pprint.pprint(s)
     i = tool.string_to_object(s)
     #pprint.pprint(i)
     
     remain_files = tool.copy_folder_with_info(i, r'E:\tool\test\trans\swang2_view_mue_ul_harm_int_2x2_FDD_1', r'E:\tool\test\trans\test_folder')
-    print remain_files
-    print 'done'
+    print (remain_files)
+    print ('done')
 
